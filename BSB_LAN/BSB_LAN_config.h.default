@@ -50,7 +50,7 @@ char mDNS_hostname[32] = "BSB-LAN";     // Advertises the hostname in the local 
  * Use pool.ntp.org if your BSB-LAN installation can access the internet.
  * Otherwise you may also use your router's address if it can act as a NTP server.
  * The default timezone "CET-1CEST,M3.5.0,M10.5.0/3" covers most Central European countries (GMT+1) and takes care of daylight saving.
- * Use "EET-2EEST,M3.5.0/3,M10.5.0/4" for Eastern European countries (GMT+2), or 
+ * Use "EET-2EEST,M3.5.0/3,M10.5.0/4" for Eastern European countries (GMT+2), or
  * use "WET0WEST,M3.5.0/1,M10.5.0" for Western European countries (GMT+0).
  * See here for a full list of timezones for places all over the world:
  * https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
@@ -174,6 +174,8 @@ byte mqtt_mode = 1; // MQTT: 1 - send messages in plain text format, 2 - send me
 // Optional: Define a device name to use as header in json payload. In case of empty string, "BSB-LAN" will be used.
 // This value is also used as a client ID towards the MQTT broker, change it if you have more than one BSB-LAN on your broker.
 char MQTTDeviceID[32] = "BSB-LAN";
+// Specify the topic configured at HomeAssistant for auto discovery, by default "homeassistant"
+char MQTTTopicHADiscovery[65] = "homeassistant";
 
 // Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 -  send values to UDP. Can be any sum of these values.
 byte LoggingMode = 0; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_MQTT_ONLY_LOG_PARAMS | CF_LOGMODE_UDP
@@ -254,7 +256,7 @@ char max_device_list[20][11] = {               // list of MAX! wall/heating ther
 */
 bool enable_version_check = false;
 
-// Enable ESP32 over-the-air updates. 
+// Enable ESP32 over-the-air updates.
 // Pro: You don't need to physically connect your PC to the ESP32 in order to update BSB-LAN.
 // Contra: Someone who has access to your network and finds out about BSB-LAN's username and password can install their own software on the ESP32.
 boolean enable_ota_update = false;
