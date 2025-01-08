@@ -7276,7 +7276,7 @@ void startLoggingDevice() {
 void createTemporaryAP () {
 #if defined (ESP32)
   esp_wifi_disconnect(); // W.Bra. 04.03.23 mandatory because of interrupts of AP; replaces WiFi.disconnect(x, y) - no arguments necessary
-  printFmtToDebug("Setting up fallback access point '%s'", fallback_ap_ssid);
+  printFmtToDebug("Setting up fallback access point '%s'", wifi_ap_ssid);
   WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
   IPAddress t = WiFi.softAPIP();
   localAP = true;
