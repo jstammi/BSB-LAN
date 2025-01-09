@@ -7276,14 +7276,13 @@ void startLoggingDevice() {
 void createTemporaryAP () {
 #if defined (ESP32)
   esp_wifi_disconnect(); // W.Bra. 04.03.23 mandatory because of interrupts of AP; replaces WiFi.disconnect(x, y) - no arguments necessary
-  printlnToDebug("Setting up AP 'BSB-LAN'");
-  WiFi.softAP("BSB-LAN", "BSB-LPB-PPS-LAN");
+  printFmtToDebug("Setting up fallback access point '%s'", wifi_ap_ssid);
+  WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
   IPAddress t = WiFi.softAPIP();
   localAP = true;
   localAPtimeout = millis();
   esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20); // W.Bra. 23.03.23 HT20
-  printFmtToDebug("IP address of BSB-LAN: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
-  printlnToDebug("Connect to access point 'BSB-LAN' with password 'BSB-LPB-PPS-LAN' and open the IP address.");
+  printFmtToDebug("IP address of BSB-LAN access point: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
 #endif
 }
 

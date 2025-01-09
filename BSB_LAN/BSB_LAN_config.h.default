@@ -39,6 +39,10 @@ char wifi_ssid[32] = "YourWiFiNetwork"; // enter your WiFi network name (SSID) h
 char wifi_pass[64] = "YourWiFiPassword";// enter your WiFi password here
 uint8_t bssid[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // enter specific BSSID address here to ensure connecting to a specific access point. Set to all zeros under normal circumstances.
 
+// for ESP32 only - on failing to connect to above wifi, a fallback one is spawned instead
+char wifi_ap_ssid[32] = "BSB-LAN";        // enter your fallback WiFi AP network name (SSID) here
+char wifi_ap_pass[64] = "BSB-LPB-PPS-LAN";// enter your fallback WiFi AP password here
+
 //#define WIFISPI                         // Activate this on the Arduino to enable WiFi via WiFiSpi. DO NOT enable this on an ESP32.
 #define WIFI_SPI_SS_PIN 12              // defines SPI-SS pin for Arduino-ESP8266 connection
 
@@ -50,7 +54,7 @@ char mDNS_hostname[32] = "BSB-LAN";     // Advertises the hostname in the local 
  * Use pool.ntp.org if your BSB-LAN installation can access the internet.
  * Otherwise you may also use your router's address if it can act as a NTP server.
  * The default timezone "CET-1CEST,M3.5.0,M10.5.0/3" covers most Central European countries (GMT+1) and takes care of daylight saving.
- * Use "EET-2EEST,M3.5.0/3,M10.5.0/4" for Eastern European countries (GMT+2), or 
+ * Use "EET-2EEST,M3.5.0/3,M10.5.0/4" for Eastern European countries (GMT+2), or
  * use "WET0WEST,M3.5.0/1,M10.5.0" for Western European countries (GMT+0).
  * See here for a full list of timezones for places all over the world:
  * https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
@@ -254,7 +258,7 @@ char max_device_list[20][11] = {               // list of MAX! wall/heating ther
 */
 bool enable_version_check = false;
 
-// Enable ESP32 over-the-air updates. 
+// Enable ESP32 over-the-air updates.
 // Pro: You don't need to physically connect your PC to the ESP32 in order to update BSB-LAN.
 // Contra: Someone who has access to your network and finds out about BSB-LAN's username and password can install their own software on the ESP32.
 boolean enable_ota_update = false;
