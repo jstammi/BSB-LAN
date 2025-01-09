@@ -6,6 +6,15 @@
 
 // Upon first installation, rename this file from BSB_lan_config.h.default to BSB_lan_config.h and adjust settings accordingly
 
+/* Optionally, if one intends to commit the settings to git, too, move all customizations containing data considered to
+ * remain private to a new file named "BSB_LAN_config_private.h" and un-comment the line below:
+*/
+//#include "BSB_LAN_config_private.h"
+/* !!! Please be aware, that any information committed and pushed to a server, must be regarded as leaked.           !!!
+ * !!! It may be possible to remove it from the repo again (with a lot of effort) - but it remains out of control as !!!
+ * !!! others may have cloned it meanwhile. In their copy this information is contained then still.                  !!!
+*/
+
 /* Select language; so far German is the most complete, with English following.
  * Available languages are: Czech (CS), German (DE), Danish (DA), English (EN), Spanish (ES), Finnish (FI),
  * French (FR), Greek (EL), Hungarian (HU), Italian (IT), Dutch (NL), Polish (PL), Russian (RU), Swedish (SV),
