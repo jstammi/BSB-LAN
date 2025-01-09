@@ -204,7 +204,7 @@ bool mqtt_connect() {
 
     char* tempstr = (char*)malloc(sizeof(mqtt_broker_addr));  // make a copy of mqtt_broker_addr for destructive strtok operation
     strcpy(tempstr, mqtt_broker_addr);
-    uint16_t mqtt_port = 1883; 
+    uint16_t mqtt_port = 1883;
     char* mqtt_host = strtok(tempstr,":");  // hostname is before an optional colon that separates the port
     char* token = strtok(NULL, ":");   // remaining part is the port number
     if (token != 0) {
@@ -445,7 +445,7 @@ boolean mqtt_send_discovery(boolean create=true) {
         initStringBuffer(&sb_topic, MQTTTopic, sizeof(MQTTTopic));
         loadPrognrElementsFromTable(line, i);
         loadCategoryDescAddr();
-        appendStringBuffer(&sb_topic, "homeassistant/");
+        appendStringBuffer(&sb_topic, "%s/", MQTTTopicHADiscovery);
         appendStringBuffer(&sb_payload, "{\"~\":\"%s/%d/%d/%g\",\"unique_id\":\"%g-%d-%d-%d\",\"state_topic\":\"~/status\",", MQTTTopicPrefix, bus->getBusDest(), decodedTelegram.cat, line, line, active_cmdtbl[i].dev_fam, active_cmdtbl[i].dev_var, my_dev_serial);
         if (decodedTelegram.isswitch) {
           appendStringBuffer(&sb_payload, "\"icon\":\"mdi:toggle-switch\",");
@@ -473,7 +473,7 @@ boolean mqtt_send_discovery(boolean create=true) {
             appendStringBuffer(&sb_topic, "sensor/");
             if (decodedTelegram.unit[0]) {
               appendStringBuffer(&sb_payload, "\"unit_of_measurement\":\"%s\",", decodedTelegram.unit);
-              if (strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters 
+              if (strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
                 appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
               }
             }
@@ -520,12 +520,12 @@ boolean mqtt_send_discovery(boolean create=true) {
           appendStringBuffer(&sb_payload, " (%s)", decodedTelegram.unit);
         }
         appendStringBuffer(&sb_payload, "\",\"device\":{\"name\":\"%s\",\"identifiers\":\"%s-%02X%02X%02X%02X%02X%02X\",\"manufacturer\":\"bsb-lan.de\",\"model\":\"" MAJOR "." MINOR "." PATCH "\"}}", MQTTTopicPrefix, MQTTTopicPrefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  
+
         appendStringBuffer(&sb_topic, "BSB-LAN/%g-%d-%d-%d/config", line, active_cmdtbl[i].dev_fam, active_cmdtbl[i].dev_var, my_dev_serial);
-  
+
         replace_char(MQTTTopic, '.', '-');
         if (!create) {
-          MQTTPayload[0] = '\0';      // If remove flag is set, send empty message to instruct auto discovery to remove the entry 
+          MQTTPayload[0] = '\0';      // If remove flag is set, send empty message to instruct auto discovery to remove the entry
         }
         if (bus->getBusDest() == 0 || line < 15000) {     // do not send (again) parameters > 15000 when using non-zero device ID
           if (MQTTPubSubClient->connected()) {

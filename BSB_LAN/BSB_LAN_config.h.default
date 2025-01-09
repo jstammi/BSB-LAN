@@ -178,6 +178,8 @@ byte mqtt_mode = 1; // MQTT: 1 - send messages in plain text format, 2 - send me
 // Optional: Define a device name to use as header in json payload. In case of empty string, "BSB-LAN" will be used.
 // This value is also used as a client ID towards the MQTT broker, change it if you have more than one BSB-LAN on your broker.
 char MQTTDeviceID[32] = "BSB-LAN";
+// Specify the topic configured at HomeAssistant for auto discovery, by default "homeassistant"
+char MQTTTopicHADiscovery[65] = "homeassistant";
 
 // Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 -  send values to UDP. Can be any sum of these values.
 byte LoggingMode = 0; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_MQTT_ONLY_LOG_PARAMS | CF_LOGMODE_UDP
