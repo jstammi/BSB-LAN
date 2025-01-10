@@ -10,9 +10,9 @@
  *         (based on the code and work from many other developers. Many thanks!)
  *         Special thanks to Ulf Diekmann for maintaining the manual up to version 3.3 and to Sergey Dukachev for lots of helpful code optimizations and restructurings as well as providing a profound Russian localization since version 0.43
  *
- * 
+ *
  * ChangeLog has moved to separate file docs/CHANGELOG.md
- * 
+ *
  */
 
 #if defined(__AVR__)
@@ -109,7 +109,7 @@
 #define REMOVE 0
 #define CREATE 1
 
-// These are configuration options that are set in main code in order not to confuse ordinary users. 
+// These are configuration options that are set in main code in order not to confuse ordinary users.
 // If you really feel you need to change them, undefine them in BSB_LAN_config.h and then set them to your desired value.
 // e.g.:
 // #undef UDP_LOG_PORT
@@ -169,7 +169,7 @@ uint16_t printKat(uint8_t cat, bool print_val, bool debug_output=true);
 
 #define REQUIRED_CONFIG_VERSION 39
 #if CONFIG_VERSION < REQUIRED_CONFIG_VERSION
-  #error "Your BSB_LAN_config.h is not up to date! Please use the most recent BSB_LAN_config.h.default, rename it to BSB_LAN_config.h and make the necessary changes to this new one." 
+  #error "Your BSB_LAN_config.h is not up to date! Please use the most recent BSB_LAN_config.h.default, rename it to BSB_LAN_config.h and make the necessary changes to this new one."
 #endif
 
 
@@ -534,7 +534,7 @@ static uint16_t baseConfigAddrInEEPROM = 0; //offset from start address in EEPRO
 
 #include "json-api-version.h"
 #include "bsb-version.h"
-const char BSB_VERSION[] = MAJOR "." MINOR "." PATCH "-" COMPILETIME;
+const char BSB_VERSION[] = MAJOR "." MINOR "." PATCH "-" COMPILETIME "(" VARIANT ")";
 
 #ifdef CUSTOM_COMMANDS
 #include "BSB_LAN_custom_global.h"
@@ -2377,8 +2377,8 @@ void generateWebConfigPage(bool printOnly) {
     } else {
       printFmtToWebClient("<output id='option_%d' name='option_%d'>\r\n", cfg.id + 1, cfg.id + 1);
     }
-  
-  
+
+
     switch (cfg.var_type) {
       case CDT_VOID: break;
       case CDT_BYTE:
@@ -2459,7 +2459,7 @@ void generateWebConfigPage(bool printOnly) {
         break;
       default: break;
     }
-  
+
   //Closing tag
     if(!printOnly){
       switch (cfg.input_type) {
@@ -4036,7 +4036,7 @@ void GetDevId() {
           bool found = false;
           for (uint i=0;i<sizeof(dev_array);i++) {
             if (dev_array[i] == 0) break;
-            if (dev_array[i] == cat_dev) found = true; 
+            if (dev_array[i] == cat_dev) found = true;
           }
           if (found == false) {
             dev_array[arr_counter] = cat_dev;
@@ -4057,7 +4057,7 @@ void GetDevId() {
         case BUS_BSB: bus->setBusType(BUS_BSB, bus->getBusAddr(), 0x7F); break;
         case BUS_LPB: bus->setBusType(BUS_LPB, bus->getBusAddr(), 0xFF); break;
       }
-    
+
       if (bus->Send(TYPE_QINF, 0x053D0064, msg, tx_msg, NULL, 0, false) == BUS_OK) {
         printTelegram(tx_msg, -1);
         unsigned long startquery = millis();
@@ -4093,7 +4093,7 @@ void GetDevId() {
             printTelegram(tx_msg, -1);
             printTelegram(msg, -1);
             memcpy(dev_lookup[i].name, &msg[bus->getPl_start()], 17);
-          } 
+          }
         }
         printlnToDebug("Bus devices found:");
         for (int i=0;i<(int)sizeof(dev_lookup)/(int)sizeof(dev_lookup[0]);i++) {
@@ -4532,7 +4532,7 @@ void loop() {
           {IPAddress t = Ethernet.localIP();
           printFmtToDebug("%d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);}
         break;
-  
+
         default:
           //nothing happened
           break;
@@ -5093,7 +5093,7 @@ void loop() {
               case VT_BIT:
                 listEnumValues(decodedTelegram.enumstr, decodedTelegram.enumstr_len, NULL, " - ", NULL, "<br>\r\n", NULL, 0, PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST);
                 break;
-              default: 
+              default:
                 printToWebClient(MENU_TEXT_ER6);
                 break;
             }
@@ -5861,7 +5861,7 @@ next_parameter:
                         cat_dev_id = dev_lookup[x].dev_id;
                         cat_dev_name = dev_lookup[x].name;
                         break;
-                      } 
+                      }
                     }
 /*
                     if (cat*2+2 < sizeof(ENUM_CAT_NR)/sizeof(*ENUM_CAT_NR)) { // only perform category boundary check if there is a higher category present
@@ -5924,7 +5924,7 @@ next_parameter:
                     if (dev_lookup[x].dev_fam == cat_dev_fam && dev_lookup[x].dev_var == cat_dev_var) {
                       cat_dev_id = dev_lookup[x].dev_id;
                       break;
-                    } 
+                    }
                   }
                 }
                 if (i_line<0 || (cmd == CMD_UNKNOWN && json_parameter < (float)BSP_INTERNAL)) {//CMD_UNKNOWN except virtual programs
@@ -6244,7 +6244,7 @@ next_parameter:
             case 'I': {//Parse HTTP form and implement changes
               applyingConfig();
               generateWebConfigPage(false);
-              generateConfigPage(); 
+              generateConfigPage();
               UpdateMaxDeviceList(); //Update list MAX! devices
               if (!(httpflags & HTTP_FRAG)) webPrintFooter();
               flushToWebClient();
@@ -6917,7 +6917,7 @@ next_parameter:
         char max_id[sizeof(max_device_list[0])] = { 0 };
         bool known_addr = false;
         bool known_eeprom = false;
-  
+
         strncpy(max_hex_str, outBuf+7, 2);
         max_hex_str[2]='\0';
         uint8_t max_msg_type = (uint8_t)strtoul(max_hex_str, NULL, 16);
@@ -6942,7 +6942,7 @@ next_parameter:
           printFmtToDebug("Message from unpaired MAX device address %08lX.\r\n", max_addr);
           if (verbose == DEVELOPER_DEBUG) printFmtToDebug("Raw message: %s\r\n", outBuf);
         }
-  
+
         if (max_msg_type == 0x00) {     // Device info after pressing pairing button
           for (int x=0;x<10;x++) {
             strncpy(max_hex_str, outBuf+29+(x*2), 2);
@@ -6951,7 +6951,7 @@ next_parameter:
           }
           max_id[sizeof(max_device_list[0]) - 1] = '\0';
           printFmtToDebug("MAX device info received:\r\n%08lX\r\n%s\r\n", max_addr, max_id);
-  
+
           for (uint16_t x=0;x<MAX_CUL_DEVICES;x++) {
             if (max_devices[x] == max_addr) {
               printlnToDebug("Device already in EEPROM");
@@ -6959,13 +6959,13 @@ next_parameter:
               break;
             }
           }
-  
+
           if (!known_eeprom) {
             for (uint16_t x=0;x<MAX_CUL_DEVICES;x++) {
               if (max_devices[x] < 1) {
                 strcpy(max_device_list[x], max_id);
                 max_devices[x] = max_addr;
-  
+
                 writeToEEPROM(CF_MAX_DEVICES);
                 writeToEEPROM(CF_MAX_DEVADDR);
                 printlnToDebug("Device stored in EEPROM");
@@ -6974,19 +6974,19 @@ next_parameter:
             }
           }
         }
-  
+
         if (max_msg_type == 0x02 && known_addr == true) {
           strncpy(max_hex_str, outBuf+27, 2);
           max_hex_str[2]='\0';
           max_valve[max_idx] = (uint32_t)strtoul(max_hex_str,NULL,16);
           printFmtToDebug("Valve position from thermostat received:\r\n%08lX\r\n%lu\r\n", max_addr, max_valve[max_idx]);
         }
-  
+
         if ((max_msg_type == 0x42 || max_msg_type == 0x60) && known_addr == true) {   // Temperature from thermostats
           uint8_t temp_str_offset;
           uint32_t max_temp_status;
           uint8_t str_len;
-  
+
           switch (max_msg_len) {
             case 0x0C: temp_str_offset = 23; str_len = 4; break;
             case 0x0E: temp_str_offset = 25; str_len = 8; break;
@@ -7005,7 +7005,7 @@ next_parameter:
             max_dst_temp[max_idx] = (max_temp_status & 0xFF0000) >> 16;
             max_valve[max_idx] = (max_temp_status & 0xFF000000) >> 24;
           }
-  
+
           printlnToDebug("MAX temperature message received:");
           printFmtToDebug("%08lX\r\n%f\r\n%f\r\n%lu\r\n", max_addr, ((float)max_cur_temp[max_idx] / 10), (float)(max_dst_temp[max_idx] / 2), max_valve[max_idx]);
         }
@@ -7070,7 +7070,7 @@ next_parameter:
           }
         }
       }
-  
+
       if ((WiFi.status() != WL_CONNECTED || not_preferred_bssid == true) && localAP == false) {
         printFmtToDebug("Reconnecting to WiFi...\r\n");
         scanAndConnectToStrongestNetwork();
@@ -7150,7 +7150,7 @@ void printWifiStatus()
     // print your WiFi shield's IP address
     IPAddress t = WiFi.localIP();
     printFmtToDebug("IP Address: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
-  
+
     // print the received signal strength
     long rssi = WiFi.RSSI();
     printFmtToDebug("Signal strength (RSSI): %l dBm\r\n", rssi);
@@ -7276,14 +7276,13 @@ void startLoggingDevice() {
 void createTemporaryAP () {
 #if defined (ESP32)
   esp_wifi_disconnect(); // W.Bra. 04.03.23 mandatory because of interrupts of AP; replaces WiFi.disconnect(x, y) - no arguments necessary
-  printlnToDebug("Setting up AP 'BSB-LAN'");
-  WiFi.softAP("BSB-LAN", "BSB-LPB-PPS-LAN");
+  printFmtToDebug("Setting up fallback access point '%s'", wifi_ap_ssid);
+  WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
   IPAddress t = WiFi.softAPIP();
   localAP = true;
   localAPtimeout = millis();
   esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20); // W.Bra. 23.03.23 HT20
-  printFmtToDebug("IP address of BSB-LAN: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
-  printlnToDebug("Connect to access point 'BSB-LAN' with password 'BSB-LPB-PPS-LAN' and open the IP address.");
+  printFmtToDebug("IP address of BSB-LAN access point: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
 #endif
 }
 
@@ -7761,7 +7760,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     WiFi.mode(WIFI_STA); //init wifi mode
     if (mDNS_hostname[0]) WiFi.setHostname(mDNS_hostname);
     esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);  // W.Bra. 23.03.23 HT20 - reduce bandwidth from 40 to 20 MHz. In 2.4MHz networks, this will increase speed and stability most of the time, or will at worst result in a roughly 10% decrease in transmission speed.
-  
+
     printToDebug("Setting up WiFi interface");
     WiFi.begin();
     timeout = millis();
@@ -7772,7 +7771,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     writelnToDebug();
     scanAndConnectToStrongestNetwork();
     #endif
-  
+
     // attempt to connect to WiFi network
     printFmtToDebug("Attempting to connect to WPA SSID: %s", wifi_ssid);
     timeout = millis();
@@ -7958,7 +7957,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
           if (isnan(avgValues_Old[i])) {
             avgValues_Old[i] = -9999;
           }
-  
+
           c = avgfile.read();
           x = 0;
           while (avgfile.available() && c != '\n' && x < sizeof(num)-1) {
@@ -7971,7 +7970,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
           num[x]='\0';
           avgValues_Current[i] = atof(num);
         }
-  
+
         c = avgfile.read();
         x = 0;
         while (avgfile.available() && c != '\n' && x < sizeof(num)-1) {
