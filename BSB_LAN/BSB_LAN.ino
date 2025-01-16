@@ -3038,6 +3038,7 @@ int set(float line      // the ProgNr of the heater parameter
 
     // 32-bit representations
     case VT_UINT100:
+    case VT_UINT100_H:
     case VT_ENERGY:
     case VT_ENERGY_N:
     case VT_ENERGY10:

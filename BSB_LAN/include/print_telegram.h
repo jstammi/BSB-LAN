@@ -751,7 +751,7 @@ void printTelegram(byte* msg, float query_line) {
     SerialPrintType(decodedTelegram.msg_type); // message type, human readable
     printFmtToDebug(" ");
 
-    if (decodedTelegram.msg_type == TYPE_SET) {   // temporarily 
+    if (decodedTelegram.msg_type == TYPE_SET) {   // temporarily
       msg[bus->getPl_start()]=0;
     }
   } else {
@@ -1006,6 +1006,7 @@ void printTelegram(byte* msg, float query_line) {
             case VT_CUBICMETER: //  u32 / 10
             case VT_CUBICMETER_N: //  u32 / 10
             case VT_UINT100:  // u32 / 100
+            case VT_UINT100_H:  // u32 / 100 h
             case VT_DWORD: // s32
             case VT_DWORD_N: // s32
             case VT_DWORD10:

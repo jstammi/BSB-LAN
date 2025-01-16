@@ -677,6 +677,7 @@ typedef enum{
   VT_ENERGY_MWH,        //  5 Byte - 1 enable / value/100 MWh
   VT_ENERGY_MWH_N,      //  5 Byte - 1 enable / value/100 MWh
   VT_UINT100,           //  5 Byte - 1 enable / value / 100
+  VT_UINT100_H,         //  5 Byte - 1 enable / value / 100 h
   VT_CUBICMETER,        //  5 Byte - 1 enable / value / 10
   VT_CUBICMETER_N,      //  5 Byte - 1 enable / value / 10
   VT_TEMP_DWORD,        //  5 Byte - 1 enable / value / 64
@@ -850,6 +851,7 @@ const units optbl[]={
 {VT_ENERGY_MWH,       100.0,  1, 4, DT_VALS, 0,  U_MWH, sizeof(U_MWH), STR_ENERGY_MWH},
 {VT_ENERGY_MWH_N,     100.0,  6, 4, DT_VALS, 0,  U_MWH, sizeof(U_MWH), STR_ENERGY_MWH},
 {VT_UINT100,          100.0,  1, 4, DT_VALS, 2,  U_NONE, sizeof(U_NONE), STR_UINT100},
+{VT_UINT100_H,        100.0,  1, 4, DT_VALS, 2,  U_HOUR, sizeof(U_HOUR), STR_UINT100},
 {VT_CUBICMETER,       10.0,   1, 4, DT_VALS, 1,  U_CM, sizeof(U_CM), STR_CUBICMETER},
 {VT_CUBICMETER_N,     10.0,   6, 4, DT_VALS, 1,  U_CM, sizeof(U_CM), STR_CUBICMETER},
 {VT_TEMP_DWORD,       64.0,   1, 4, DT_VALS, 1,  U_DEG, sizeof(U_DEG), STR_TEMP_DWORD},
