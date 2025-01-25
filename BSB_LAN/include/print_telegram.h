@@ -1225,6 +1225,18 @@ void printTelegram(byte* msg, float query_line) {
                 decodedTelegram.error = 256;
                 }
               break;
+
+            case VT_BINARY: // binary (as hex string)
+              if (data_len > 0) {
+                printToDebug((char*)&msg[bus->getPl_start()]);
+                bin2hex(decodedTelegram.value,msg+bus->getPl_start(),data_len,0);
+                decodedTelegram.value[2*data_len]='\0';
+              } else {
+                printToDebug(" VT_BINARY len == 0: ");
+                prepareToPrintHumanReadableTelegram(msg, data_len, bus->getPl_start());
+                decodedTelegram.error = 256;
+                }
+              break;
             case VT_PPS_TIME: // PPS: Time and day of week
             {
               sprintf(decodedTelegram.value, "%02d:%02d:%02d", hour(), minute(), second());
