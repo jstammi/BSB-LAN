@@ -292,6 +292,7 @@ typedef enum {
   DT_DTTM,    // date and time
   DT_DDMM,    // day and month
   DT_STRN,    // string
+  DT_BINS,    // hex string
   DT_DWHM,    // PPS time (day of week, hour:minute)
   DT_TMPR,    // time program
   DT_THMS,    // time (hours:minute:seconds)
@@ -305,6 +306,7 @@ const char STR_HHMM[] = "HHMM";
 const char STR_DTTM[] = "DTTM";
 const char STR_DDMM[] = "DDMM";
 const char STR_STRN[] = "STRN";
+const char STR_BINS[] = "BINS";
 const char STR_DWHM[] = "DWHM";
 const char STR_TMPR[] = "TMPR";
 const char STR_THMS[] = "THMS";
@@ -427,6 +429,7 @@ const char STR_TIME[] = "TIME";
 const char STR_VACATIONPROG[] = "VACATIONPROG";
 const char STR_TIMEPROG[] = "TIMEPROG";
 const char STR_STRING[] = "STRING";
+const char STR_BINARY[] = "BINARY";
 const char STR_CUSTOM_ENUM[] = "CUSTOM_ENUM";
 const char STR_CUSTOM_BYTE[] = "CUSTOM_BYTE";
 const char STR_CUSTOM_BIT[] = "CUSTOM_BIT";
@@ -519,6 +522,7 @@ const dt_types dt_types_text[]={
   {DT_DTTM, STR_DTTM},
   {DT_DDMM, STR_DDMM},
   {DT_STRN, STR_STRN},
+  {DT_BINS, STR_BINS},
   {DT_DWHM, STR_DWHM},
   {DT_TMPR, STR_TMPR},
   {DT_THMS, STR_THMS}
@@ -688,6 +692,7 @@ typedef enum{
   VT_VACATIONPROG,      // subset of VT_DATETIME
   VT_TIMEPROG,          //*12 Byte - no flag / 1_ein 1_aus 2_ein 2_aus 3_ein 3_aus (jeweils SS:MM)
   VT_STRING,            //* x Byte - 1 enable / string
+  VT_BINARY,            //* 2* x Byte
   VT_CUSTOM_ENUM,       //* x Byte - 1 Byte Position, 1 Byte Parameter-Wert, Space, Text
   VT_CUSTOM_BYTE,       //* x Byte - 1 Byte Position, 1 Byte Länge Parameter, Space (!) (nötig für Erkennung)
   VT_CUSTOM_BIT,        //* x Byte - 1st Byte position, then 1 Byte bit value, 1 Byte bitmask, space, text
@@ -862,6 +867,7 @@ const units optbl[]={
 {VT_VACATIONPROG,     1.0,    6, 8+32, DT_DDMM, 0,  U_NONE, sizeof(U_NONE), STR_VACATIONPROG},
 {VT_TIMEPROG,         1.0,    8, 11+32, DT_TMPR, 0,  U_NONE, sizeof(U_NONE), STR_TIMEPROG},
 {VT_STRING,           1.0,    8, 22+64, DT_STRN, 0,  U_NONE, sizeof(U_NONE), STR_STRING},
+{VT_BINARY,           1.0,    8, 0, DT_BINS, 0,  U_NONE, sizeof(U_NONE), STR_BINARY},
 {VT_CUSTOM_ENUM,      1.0,    8, 22+32+64, DT_ENUM, 0,  U_NONE, sizeof(U_NONE), STR_CUSTOM_ENUM},
 {VT_CUSTOM_BYTE,      1.0,    0, 22+32+64, DT_VALS, 0,  U_NONE, sizeof(U_NONE), STR_CUSTOM_BYTE},
 {VT_CUSTOM_BIT,       1.0,    0, 22+32+64, DT_BITS, 0,  U_NONE, sizeof(U_NONE), STR_CUSTOM_BIT},
