@@ -1,5 +1,11 @@
 # BSB-LPB-PPS-LAN
 
+[<img src="https://img.shields.io/github/last-commit/fredlcore/BSB-LAN">]()
+[<img src="https://img.shields.io/github/commit-activity/t/fredlcore/BSB-LAN">]()
+[<img src="https://img.shields.io/github/stars/fredlcore/BSB-LAN?style=plastic">](https://github.com/fredlcore/BSB-LAN/stargazers)
+[<img src="https://img.shields.io/github/forks/fredlcore/BSB-LAN?style=plastic">](https://github.com/fredlcore/BSB-LAN/forks)
+[<img src="https://img.shields.io/github/followers/fredlcore?style=plastic">](https://github.com/fredlcore?tab=followers)
+
 Die deutsche Fassung dieser Datei gibt es [hier](README_de.md).
 
 Before getting started, please read through the manual [here](https://docs.bsb-lan.de).
@@ -80,4 +86,4 @@ BSB-Board on Olimex POE inside the project's 3D-printed case:
 <img src="https://github.com/fredlcore/bsb_lan/blob/master/docs/images/Logic%20Level%20Adapter%20in%20Case.jpg" size="50%">
 
 
-<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.  
