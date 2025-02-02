@@ -1,12 +1,12 @@
 #if defined(ARDUINO) && ARDUINO >= 100
-#include "Arduino.h"
+  #include "Arduino.h"
 #else
-#include "WProgram.h"
+  #include "WProgram.h"
 #endif
 #if defined(ESP32)
-#include "driver/uart.h"
-#include "soc/uart_struct.h"
-#include "soc/uart_reg.h"
+  #include "driver/uart.h"
+  #include "soc/uart_struct.h"
+  #include "soc/uart_reg.h"
 #endif
 
 #include "bsb.h"
@@ -137,7 +137,7 @@ void BSB::print(byte* msg) {
 }
 
 // Receives a message and stores it to buffer
-boolean BSB::Monitor(byte* msg) {
+bool BSB::Monitor(byte* msg) {
   unsigned long int ts;
   byte i=0;
     
@@ -654,8 +654,8 @@ int8_t BSB::Send(uint8_t type, uint32_t cmd, byte* rx_msg, byte* tx_msg, byte* p
   return BUS_NOMATCH;
 }
 
-boolean BSB::rx_pin_read() {
-  return boolean(* portInputRegister(digitalPinToPort(rx_pin)) & digitalPinToBitMask(rx_pin)) ^ 1;
+bool BSB::rx_pin_read() {
+  return bool(* portInputRegister(digitalPinToPort(rx_pin)) & digitalPinToBitMask(rx_pin)) ^ 1;
 }
 
 uint8_t BSB::readByte() {
