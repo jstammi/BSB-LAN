@@ -129,7 +129,7 @@ typedef struct {
   uint8_t dev_id;
   uint16_t dev_oc;
   uint32_t dev_serial;
-  char name[33];
+  char name[18];
 } device_map;
 device_map dev_lookup[10];
 
@@ -160,7 +160,13 @@ uint16_t printKat(uint8_t cat, bool print_val, bool debug_output=true);
 
 #include "src/Base64/src/Base64.h"
 
-#define MAX_HEATINGTBL 500    // maximum number of entries for temporary device specific parameter list. If too low, adjust via #undef/#define MAX_HEATINGTBL in BSB_LAN_config.h
+// MAX variables (can be overwritten in BSB_LAN_config.h if necessary)
+uint32_t max_cul_rf_addr = 0x123456; // RF address of MAX_CUL to which devices are paired to
+uint8_t max_flag = 0x00;             // Flag - set to 0x04 when addressing a group ("room"), set to 0x00 for addressing individual devices. 
+uint8_t max_group_id = 0x00;         // Group ID ("room number") - set to 0x00 when addressing individual devices, otherwise use "room" number here.
+uint8_t max_temp_mode = 0x01;        // Temperature mode: 0x00 - auto, 0x01 - manual, 0x02 = vacation (not supported here), 0x03 = boost (not supported here)
+
+#define MAX_HEATINGTBL 500           // maximum number of entries for temporary device specific parameter list. If too low, adjust via #undef/#define MAX_HEATINGTBL in BSB_LAN_config.h
 
 //#include "src/BSB/BSBSoftwareSerial.h"
 #include "src/BSB/bsb.h"
@@ -219,14 +225,8 @@ WebServer update_server(8080);
 EEPROMClass EEPROM_ESP((const char *)"nvs");
   #define EEPROM EEPROM_ESP     // This is a dirty hack because the Arduino IDE does not pass on #define NO_GLOBAL_EEPROM which would prevent the double declaration of the EEPROM object
 #else
-  #ifdef WIFISPI
-    #warning "Support for WiFi on Arduino Due may be removed in future versions. Please inform Frederik (bsb (ät) code-it.de) that you are still using it."
-    #include "src/WiFiSpi/src/WiFiSpiUdp.h"
-WiFiSpiUdp udp, udp_log;
-  #else
-    #include <EthernetUdp.h>
+  #include <EthernetUdp.h>
 EthernetUDP udp, udp_log;
-  #endif
 #endif
 
 
@@ -253,13 +253,6 @@ BlueDot_BME280 *bme;  //Set 2 if you need two sensors.
 #define TCA9548A_ADDR 0x70
 
 bool client_flag = false;
-
-#ifdef WIFISPI
-    #include "src/WiFiSpi/src/WiFiSpi.h"
-using ComServer = WiFiSpiServer;
-using ComClient = WiFiSpiClient;
-    #define WiFi WiFiSpi
-#endif
 
 bool localAP = false;
 unsigned long localAPtimeout = millis();
@@ -1909,15 +1902,6 @@ void generateConfigPage(void) {
   "USE_ADVANCED_PLOT_LOG_FILE"
   #endif
 
-  #ifdef WIFISPI
-  #ifdef ANY_MODULE_COMPILED
-  ", "
-  #else
-  #define ANY_MODULE_COMPILED
-  #endif
-  "WIFISPI"
-  #endif
-
   #if !defined (ANY_MODULE_COMPILED)
   "NONE"
   #endif
@@ -2844,6 +2828,20 @@ int set(float line      // the ProgNr of the heater parameter
     {
       if(line == (float)BSP_INTERNAL + 6){
         if (atoi(val)) resetDurations(); return 1; // reset furnace duration
+      }
+      if ((line >= (float)BSP_MAX && line < (float)BSP_MAX + MAX_CUL_DEVICES)) {// set MAX destination temperature
+        max_dst_temp[(int)line - BSP_MAX] = atof(val) * 2;
+        Serial.println(max_dst_temp[(int)line - BSP_MAX]);
+        char max_send[34];
+        sprintf(max_send, "Zs0B88%02X40%06lX%06lX%02X%02X", max_flag, max_cul_rf_addr, max_devices[(int)line - BSP_MAX], max_group_id, (max_temp_mode << 6) | max_dst_temp[(int)line - BSP_MAX]);
+        printlnToDebug(max_send);
+        if (max_cul->connected()) {
+          max_cul->println(max_send);
+        } else {
+          printlnToDebug("MAX_CUL not connected, cannot send updated temperature!")
+          return 2;
+        }
+        return 1;
       }
       if ((line >= (float)BSP_FLOAT && line < (float)BSP_FLOAT + numCustomFloats)) {// set custom_float
         custom_floats[(int)line - BSP_FLOAT] = atof(val);
@@ -4014,7 +4012,7 @@ void query(float line_start  // begin at this line (ProgNr)
       }
     }
     line = get_next_prognr(line);
-  } while(line >= line_start && line < line_end+1); // endfor, for each valid line (ProgNr) command within selected range
+  } while(line >= line_start && line < line_end+0.1); // endfor, for each valid line (ProgNr) command within selected range
 }
 
 bool GetDevId() {
@@ -5976,6 +5974,11 @@ next_parameter:
                   if (decodedTelegram.data_type == DT_ENUM && decodedTelegram.enumdescaddr)
                     printToWebClient(decodedTelegram.enumdescaddr);
                   printToWebClient("\",\r\n");
+                  printToWebClient("    \"payload\": \"");
+                  for (int i=0; i < decodedTelegram.payload_length; i++) {
+                    printFmtToWebClient("%02X", decodedTelegram.payload[i]);
+                  }
+                  printFmtToWebClient("\",\r\n");
                 }
 
                 if (p[2] != 'Q') {
@@ -6744,7 +6747,7 @@ next_parameter:
       if (LoggingMode & CF_LOGMODE_UDP) {
         IPAddress local_ip;
         if (network_type == WLAN) {
-#if defined(ESP32) || defined(WIFISPI)
+#if defined(ESP32)
           local_ip = WiFi.localIP();
 #endif
         } else {
@@ -7715,23 +7718,6 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   WiFi.onEvent(netEvent);
 #endif
 
-#ifdef WIFISPI
-  WiFi.init(WIFI_SPI_SS_PIN);     // SS signal is on Due pin 12
-
-  // check for the presence of the shield
-  if (WiFi.status() == WL_NO_SHIELD) {
-    printToDebug("WiFi shield not present. Cannot continue.\r\n");
-    // don't continue
-    while (true);
-  }
-
-  if (!WiFi.checkProtocolVersion()) {
-    printToDebug("Protocol version mismatch. Please upgrade the WiFiSpiESP firmware of the ESP.\r\n");
-    // don't continue:
-    while (true);
-  }
-#endif
-
   // setup IP addresses
   if (!useDHCP && ip_addr[0]) {
     IPAddress ip(ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
@@ -7758,8 +7744,6 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     } else {
 #if defined(ESP32)
       WiFi.config(ip, gateway, subnet, dnsserver);
-#elif defined(WIFISPI)
-      WiFi.config(ip, dnsserver, gateway, subnet);
 #endif
     }
   } else {
@@ -7790,7 +7774,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     SerialOutput->print(" gateway: ");
     SerialOutput->println(Ethernet.gatewayIP());
   } else {
-#if defined(ESP32) || defined(WIFISPI)
+#if defined(ESP32)
     unsigned long timeout;
     #ifdef ESP32
     // Workaround for problems connecting to wireless network on some ESP32, see here: https://github.com/espressif/arduino-esp32/issues/2501#issuecomment-731618196
@@ -7825,7 +7809,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     // you're connected now, so print out the data
       printToDebug("\r\nYou're connected to the network:\r\n");
     #if defined(__arm__) || defined(ESP32)
-      WiFi.macAddress(mac);  // overwrite mac[] with actual MAC address of ESP32 or WiFiSpi connected ESP
+      WiFi.macAddress(mac);  // overwrite mac[] with actual MAC address of ESP32
     #endif
     #if defined(ESP32)
       printWifiStatus();
@@ -8036,19 +8020,23 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   }
 
   if(mDNS_hostname[0]) {
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 #if defined(ESP32)
+    char instance_name[35];
+    snprintf(instance_name, sizeof(instance_name), "BSB-LAN %s/%lu", dev_lookup[0].name, dev_lookup[0].dev_serial);
     MDNS.begin(mDNS_hostname);
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("BSB-LAN web service._http", "tcp", 80);
+    MDNS.setInstanceName(instance_name);
+    MDNS.addService("http", "tcp", HTTPPort);
+    MDNS.addServiceTxt("http", "tcp", "description", "BSB-LAN web service");
+    MDNS.addServiceTxt("http", "tcp", "mac", (const char*)macStr);
 #else
-    if (network_type==WLAN) {
-#if defined(WIFISPI)
-      mdns.begin(WiFi.localIP(), mDNS_hostname);
-#endif
-    } else {
-      mdns.begin(Ethernet.localIP(), mDNS_hostname);
-    }
-    mdns.addServiceRecord("BSB-LAN web service._http", HTTPPort, MDNSServiceTCP);
+    char instance_name[35];
+    snprintf(instance_name, sizeof(instance_name), "BSB-LAN %s/%lu.http", dev_lookup[0].name, dev_lookup[0].dev_serial);
+    mdns.begin(Ethernet.localIP(), mDNS_hostname);
+    char service_txt[60];
+    snprintf(service_txt, sizeof(service_txt), "%c%s%c%s%s", 0x1F, "description=BSB-LAN web service", 0x15, "mac=", macStr);
+    mdns.addServiceRecord(instance_name, HTTPPort, MDNSServiceTCP, service_txt);
 #endif
     printFmtToDebug("Starting MDNS service with hostname %s\r\n", mDNS_hostname);
   }

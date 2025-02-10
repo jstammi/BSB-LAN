@@ -435,6 +435,15 @@ bool mqtt_send_discovery(bool create=true) {
     if (bus->getBusType() != BUS_PPS && line >= 15000 && line <= 16000) continue;
     if (line == 19999) continue;    // skip entry for unknown parameter
     if (line > 20999) break;
+    if (LoggingMode & CF_LOGMODE_MQTT_ONLY_LOG_PARAMS) {
+      boolean isLogged = false;
+      for (int i=0;i<numLogValues;i++) {
+        if (log_parameters[i].number == line && (log_parameters[i].dest_addr == bus->getBusDest() || (log_parameters[i].dest_addr == -1 && bus->getBusDest() ==  dest_address))) {
+          isLogged = true;
+        }
+      }
+      if (!isLogged) continue;
+    }
     do {
       i=findLine(line);
       if (i>=0) {
@@ -472,10 +481,8 @@ bool mqtt_send_discovery(bool create=true) {
             appendStringBuffer(&sb_topic, "sensor/");
             if (decodedTelegram.unit[0]) {
               appendStringBuffer(&sb_payload, "\"unit_of_measurement\":\"%s\",", decodedTelegram.unit);
-              if (strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
-                appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
-              }
-            } else if (decodedTelegram.type == VT_SINT_NN || decodedTelegram.type == VT_DWORD || decodedTelegram.type == VT_UINT || decodedTelegram.type == VT_BYTE) {
+            }
+            if (decodedTelegram.data_type == DT_VALS && strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
               appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
             }
             sensor_type = MQTT_SENSOR;
