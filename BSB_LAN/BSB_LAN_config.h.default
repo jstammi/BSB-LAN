@@ -36,7 +36,7 @@ byte UseEEPROM = 1;
 /*
  * Configuration of the network settings
 */
-uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi. Arduino users using WiFiSpi have to activate the definement below as well.
+uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi.
 uint16_t HTTPPort = 80;
 bool useDHCP = true;                    // Set to false if you want to use a fixed IP.
 byte ip_addr[4] = {192,168,178,88};     // Please note the commas instead of dots!!!  Set useDHCP (above) to false if you want to use a fixed IP.
@@ -51,9 +51,6 @@ uint8_t bssid[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // enter specific BSSI
 // for ESP32 only - on failing to connect to above wifi, a fallback one is spawned instead
 char wifi_ap_ssid[32] = "BSB-LAN";        // enter your fallback WiFi AP network name (SSID) here
 char wifi_ap_pass[64] = "BSB-LPB-PPS-LAN";// enter your fallback WiFi AP password here
-
-//#define WIFISPI                         // Activate this on the Arduino to enable WiFi via WiFiSpi. DO NOT enable this on an ESP32.
-#define WIFI_SPI_SS_PIN 12              // defines SPI-SS pin for Arduino-ESP8266 connection
 
 char mDNS_hostname[32] = "BSB-LAN";     // Advertises the hostname in the local network. Set this to an empty string if you don't want your device to be found under this name in your network.
 
@@ -190,7 +187,7 @@ char MQTTDeviceID[32] = "BSB-LAN";
 // Specify the topic configured at HomeAssistant for auto discovery, by default "homeassistant"
 char MQTTTopicHADiscovery[65] = "homeassistant";
 
-// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 -  send values to UDP. Can be any sum of these values.
+// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 - send only logged parameter values to MQTT broker, 16 -  send values to UDP. Can be any sum of these values.
 byte LoggingMode = 0; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_MQTT_ONLY_LOG_PARAMS | CF_LOGMODE_UDP
 
 // Create 24h averages from these parameters and save data into averages.txt on SD-card.
@@ -254,9 +251,6 @@ char max_device_list[20][11] = {               // list of MAX! wall/heating ther
   "KEQ0502326",                                // use MAX! serial numbers here which have to have exactly 10 characters
   "KEQ0505080"
 };
-
-// include commands from BSB_lan_custom.h to be executed at the end of each main loop
-//#define CUSTOM_COMMANDS
 
 /*
  * Check for new versions when accessing BSB-LAN's main page.

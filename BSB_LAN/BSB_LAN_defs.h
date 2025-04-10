@@ -79,6 +79,22 @@
 #define FL_SW_CTL_RONLY 128 // Software controlled read-only flag. if readOnlyMode = 1 then program values won't save. If readOnlyMode = 0 - new values can be set.
 #define FL_NOSWAP_QUR   256 // Do not swap first two bytes for QUR telegram
 #define FL_FORCE_INF    512 // Command ID is always used with INF telegrams, so force INF even if SET is requested.
+#define FL_ENUM_0_1     (0 << 16) + (1 << 20)
+#define FL_ENUM_0_2     (0 << 16) + (2 << 20)
+#define FL_ENUM_1_1     (1 << 16) + (1 << 20)
+#define FL_ENUM_1_2     (1 << 16) + (2 << 20)
+#define FL_ENUM_2_1     (2 << 16) + (1 << 20)
+#define FL_ENUM_2_2     (2 << 16) + (2 << 20)
+#define FL_ENUM_3_1     (3 << 16) + (1 << 20)
+#define FL_ENUM_4_1     (4 << 16) + (1 << 20)
+#define FL_ENUM_5_1     (5 << 16) + (1 << 20)
+#define FL_ENUM_6_1     (6 << 16) + (1 << 20)
+#define FL_ENUM_6_2     (6 << 16) + (2 << 20)
+#define FL_ENUM_7_1     (7 << 16) + (1 << 20)
+#define FL_ENUM_8_1     (8 << 16) + (1 << 20)
+#define FL_ENUM_9_1     (9 << 16) + (1 << 20)
+#define FL_ENUM_10_1    (10 << 16) + (1 << 20)
+#define FL_ENUM_11_1    (11 << 16) + (1 << 20)
 
 /* heating systems */
 #define DEV_021_ALL  21,255 // RVL470
@@ -497,7 +513,7 @@ typedef struct {
   const char  *desc;               // description test
   uint16_t    enumstr_len;         // sizeof enum
   const char  *enumstr;            // enum string
-  uint16_t    flags;               // e.g. FL_RONLY
+  uint32_t    flags;               // e.g. FL_RONLY
   uint8_t     dev_fam;             // device family
   uint8_t     dev_var;             // device variant
 //  uint32_t    devices;           // e.g. DEV_ALL, DEV_097_ALL, DEV_162_ALL+DEV_163_ALL, DEV_ALL-DEV_097_ALL
@@ -720,7 +736,7 @@ const units optbl[]={
 {VT_GRADIENT_SHORT_NN,1.0,    1, 1, DT_VALS, 0,  U_GRADIENT, sizeof(U_GRADIENT), STR_GRADIENT_SHORT},
 {VT_HOURS_SHORT,      1.0,    1, 1, DT_VALS, 0,  U_HOUR, sizeof(U_HOUR), STR_HOURS_SHORT},
 {VT_HOURS_SHORT_N,    1.0,    6, 1, DT_VALS, 0,  U_HOUR, sizeof(U_HOUR), STR_HOURS_SHORT},
-{VT_LPBADDR,          1.0,    1, 1, DT_VALS, 0,  U_NONE, sizeof(U_NONE), STR_LPBADDR},
+{VT_LPBADDR,          1.0,    1, 1, DT_STRN, 0,  U_NONE, sizeof(U_NONE), STR_LPBADDR},
 {VT_LPM_SHORT,        10.0,   0, 2, DT_VALS, 1,  U_LITERPERMIN, sizeof(U_LITERPERMIN), STR_LPM_SHORT},
 {VT_MINUTES_SHORT,    1.0,    1, 1, DT_VALS, 0,  U_MIN, sizeof(U_MIN), STR_MINUTES_SHORT},
 {VT_MINUTES_SHORT_N,  1.0,    6, 1, DT_VALS, 0,  U_MIN, sizeof(U_MIN), STR_MINUTES_SHORT},
@@ -876,7 +892,7 @@ const units optbl[]={
 {VT_LONG,             1.0,    0, 0, DT_VALS, 0,  U_NONE, sizeof(U_NONE), STR_LONG},
 {VT_PRESSURE_HPA,     1.0,    0, 0, DT_VALS, 2,  U_ATM_PRESSURE, sizeof(U_ATM_PRESSURE), STR_ATM_PRESSURE},
 {VT_ALTITUDE,         1.0,    0, 0, DT_VALS, 0,  U_ALTITUDE, sizeof(U_ALTITUDE), STR_ALTITUDE},
-{VT_UNKNOWN,          1.0,    0, 0, DT_VALS, 1,  U_NONE, sizeof(U_NONE), STR_UNKNOWN},
+{VT_UNKNOWN,          1.0,    0, 0, DT_STRN, 1,  U_NONE, sizeof(U_NONE), STR_UNKNOWN},
 };
 
 const char STR10100[] = STR10100_TEXT;
@@ -1065,12 +1081,20 @@ const char ENUM_ONOFF7[] = {
 "\x07\xFF " MENU_TEXT_ON
 };
 
-
 const char ENUM_CUSTOM01[] = {
 "\x00\x01 "
 };
+const char ENUM_CUSTOM02[] = {
+  "\x00\x02 "
+};
 const char ENUM_CUSTOM11[] = {
 "\x01\x01 "
+};
+const char ENUM_CUSTOM21[] = {
+  "\x02\x01 "
+};
+const char ENUM_CUSTOM31[] = {
+"\x03\x01 "
 };
 const char ENUM_CUSTOM41[] = {
 "\x04\x01 "
@@ -1080,6 +1104,24 @@ const char ENUM_CUSTOM51[] = {
 };
 const char ENUM_CUSTOM54[] = {
 "\x05\x04 "
+};
+const char ENUM_CUSTOM61[] = {
+  "\x06\x01 "
+  };
+const char ENUM_CUSTOM71[] = {
+"\x07\x01 "
+};
+const char ENUM_CUSTOM81[] = {
+  "\x08\x01 "
+  };
+const char ENUM_CUSTOM91[] = {
+"\x09\x01 "
+};
+const char ENUM_CUSTOM101[] = {
+  "\x0a\x01 "
+};
+const char ENUM_CUSTOM111[] = {
+  "\x0b\x01 "
 };
 
 //TODO: Move to translations
@@ -1296,10 +1338,10 @@ const char ENUM15046[] = {
 {CMD_UNKNOWN, VT_TEMP,          (float)BSP_ONEWIRE+0.1,STR20301, 0,                  NULL,         FL_RONLY, DEV_ALL},     // One wire (Dallas) sensor Current temperature
 {CMD_UNKNOWN, VT_STRING,        (float)BSP_MAX+0.0,    STR20500, 0,                  NULL,         FL_RONLY, DEV_ALL},     // MAX! sensor ID
 {CMD_UNKNOWN, VT_TEMP,          (float)BSP_MAX+0.1,    STR20501, 0,                  NULL,         FL_RONLY, DEV_ALL},     // MAX! sensor Current temperature
-{CMD_UNKNOWN, VT_TEMP,          (float)BSP_MAX+0.2,    STR20502, 0,                  NULL,         FL_RONLY, DEV_ALL},     // MAX! sensor Destination temperature
+{CMD_UNKNOWN, VT_TEMP,          (float)BSP_MAX+0.2,    STR20502, 0,                  NULL,         DEFAULT_FLAG, DEV_ALL},     // MAX! sensor Destination temperature
 {CMD_UNKNOWN, VT_PERCENT_WORD1, (float)BSP_MAX+0.3,    STR20503, 0,                  NULL,         FL_RONLY, DEV_ALL},     // MAX! sensor valve opening (in percent)
-{CMD_UNKNOWN, VT_FLOAT,         BSP_FLOAT,      STR20700, 0,                  NULL,         DEFAULT_FLAG, DEV_ALL}, // custom_floats
-{CMD_UNKNOWN, VT_LONG,          BSP_LONG,       STR20800, 0,                  NULL,         DEFAULT_FLAG, DEV_ALL}, // custom_longs
+{CMD_UNKNOWN, VT_FLOAT,         BSP_FLOAT,             STR20700, 0,                  NULL,         DEFAULT_FLAG, DEV_ALL}, // custom_floats
+{CMD_UNKNOWN, VT_LONG,          BSP_LONG,              STR20800, 0,                  NULL,         DEFAULT_FLAG, DEV_ALL}, // custom_longs
 
 //{CMD_END,     VT_UNKNOWN,       65535, "",       0,                    NULL,         DEFAULT_FLAG, DEV_ALL}
 

@@ -42,7 +42,7 @@ Wenn du die Einstellungen so geändert hast, dass du nicht mehr auf die Web-Ober
 
 ---
 ## Ich kann nur auf sehr wenige Parameter über BSB/LPB zugreifen!
-- BSB-LAN kommt zunächst nur mit einer kleinen Menge an Parametern, die auf (fast) jedem Heizsystem funktionieren. Du musst eine [gerätespezifische Parameterliste erstellen](install.md#generieren-der-geratespezifischen-parameterliste).
+- BSB-LAN kommt zunächst nur mit einer kleinen Menge an Parametern, die auf (fast) jedem Heizsystem funktionieren. Du musst eine [gerätespezifische Parameterliste erstellen](install.md#generieren-der-geratespezifischen-parameterliste). Wenn nach dem Hinzufügen der gerätespezifischen Parameterliste immer noch nur wenige Parameter angezeigt werden, dann wurde sehr die alte Datei nicht überschrieben, sondern wahrscheinlich eine zweite Kopie hinzugefügt (die dann beim Kompilieren ignoriert wird).
 
 ---
 ## Kategorienliste plötzlich sehr klein
@@ -71,7 +71,8 @@ Wenn du die Einstellungen so geändert hast, dass du nicht mehr auf die Web-Ober
 
 ---
 ## Raumtemperatur (oder ein anderer Parameter) kann nicht eingestellt werden
-- Überprüfe die Einstellungen von BSB-LAN und stelle sicher, dass [der Schreibzugriff aktiviert ist][WriteAccess] und auf *standard* oder *komplett* gesetzt ist.
+- Überprüfe die Einstellungen von BSB-LAN und stelle sicher, dass [der Schreibzugriff aktiviert ist][WriteAccess] und auf *standard* oder *komplett* gesetzt ist.  
+Darüber hinaus sind einige Parameter nur schreibbar. Die aktuelle Raumtemperatur kann z.B. über den Parameter 10000 nur geschrieben, aber nicht ausgelesen werden. Zur Überprüfung sind dann die entsprechenden Parameter in der Kategorie `Status` zu suchen, z.B. ist Parameter 8740 für viele Heizungen die Ist-Temperatur für Heizkreis 1.
 
 ---
 ## Web-Oberfläche hängt sich beim Herstellen einer neuen Verbindung auf
