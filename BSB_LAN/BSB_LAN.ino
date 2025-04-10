@@ -473,7 +473,7 @@ uint16_t error; //0 - ok, 7 - parameter not supported, 1-255 - LPB/BSB bus error
 uint8_t msg_type; //telegram type
 uint8_t src_addr; //telegram address
 uint8_t dest_addr; //telegram address
-uint16_t flags; //flags
+uint32_t flags; //flags
 uint8_t readwrite; // 0 - read/write, 1 - read only, 2 - write only
 uint8_t isswitch; // 0 - Any type, 1 - ONOFF or YESNO type
 uint8_t type; //prog type (active_cmdtbl[].type). VT_*
@@ -530,9 +530,7 @@ static uint16_t baseConfigAddrInEEPROM = 0; //offset from start address in EEPRO
 #include "bsb-version.h"
 const char BSB_VERSION[] = MAJOR "." MINOR "." PATCH "-" COMPILETIME "(" VARIANT ")";
 
-#ifdef CUSTOM_COMMANDS
 #include "BSB_LAN_custom_global.h"
-#endif
 
 /* ******************************************************************
  *      ************** Program code starts here **************
@@ -1096,7 +1094,7 @@ int findLine(float line)
     c = active_cmdtbl[i].cmd;
     uint8_t dev_fam = active_cmdtbl[i].dev_fam;
     uint8_t dev_var = active_cmdtbl[i].dev_var;
-    uint16_t dev_flags = active_cmdtbl[i].flags;
+    uint32_t dev_flags = active_cmdtbl[i].flags;
     if (verbose == DEVELOPER_DEBUG) printFmtToDebug("l = %.1f, dev_fam = %d,  dev_var = %d, dev_flags = %d\r\n", l, dev_fam, dev_var, dev_flags);
 
     if ((dev_fam == my_dev_fam || dev_fam == DEV_FAM(DEV_ALL)) && (dev_var == my_dev_var || dev_var == DEV_VAR(DEV_ALL))) {
@@ -1884,15 +1882,6 @@ void generateConfigPage(void) {
 // list of enabled modules
   printToWebClient(MENU_TEXT_MOD ": <BR>\r\n"
 
-  #ifdef CUSTOM_COMMANDS
-  #ifdef ANY_MODULE_COMPILED
-  ", "
-  #else
-  #define ANY_MODULE_COMPILED
-  #endif
-  "CUSTOM_COMMANDS"
-  #endif
-
   #ifdef USE_ADVANCED_PLOT_LOG_FILE
   #ifdef ANY_MODULE_COMPILED
   ", "
@@ -2337,7 +2326,7 @@ void generateWebConfigPage(bool printOnly) {
     if(!printOnly){
       switch (cfg.input_type) {
         case CPI_TEXT:
-        printFmtToWebClient("<input type=text id='option_%d' name='option_%d' ", cfg.id + 1, cfg.id + 1);
+        printFmtToWebClient("<input type='%s' id='option_%d' name='option_%d' ", cfg.flags & OPT_FL_PASSWORD ? "password":"text", cfg.id + 1, cfg.id + 1);
         switch (cfg.var_type) {
           case CDT_MAC:
             printToWebClient("pattern='([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}'");
@@ -2801,7 +2790,7 @@ int set(float line      // the ProgNr of the heater parameter
   if (i<0) return 0;        // no match
 
   uint32_t c = active_cmdtbl[i].cmd;
-  uint16_t dev_flags = active_cmdtbl[i].flags;
+  uint32_t dev_flags = active_cmdtbl[i].flags;
   // Check for readonly parameter
   if (programIsreadOnly(dev_flags)) {
     printlnToDebug("Parameter is readonly!");
@@ -2919,7 +2908,7 @@ int set(float line      // the ProgNr of the heater parameter
       default: pps_values[cmd_no] = atoi(val); break;
     }
 
-    uint16_t flags=active_cmdtbl[i].flags;
+    uint32_t flags=active_cmdtbl[i].flags;
     if ((flags & FL_EEPROM) == FL_EEPROM && EEPROM_ready) {
 //    if(EEPROM_ready && (allow_write_pps_values[cmd_no / 8] & (1 << (cmd_no % 8)))) {
       printFmtToDebug("Writing EEPROM slot %d with value %u", cmd_no, pps_values[cmd_no]);
@@ -3856,9 +3845,9 @@ void query(float line) {  // line (ProgNr)
 #endif
 
   i=findLine(line);
-      uint32_t c = active_cmdtbl[i].cmd;
+  uint32_t c = active_cmdtbl[i].cmd;
   uint8_t query_type = TYPE_QUR;
-      uint16_t dev_flags = active_cmdtbl[i].flags;
+  uint32_t dev_flags = active_cmdtbl[i].flags;
     if (dev_flags & FL_QINF_ONLY) {
       query_type = TYPE_QINF;
     }
@@ -4012,7 +4001,7 @@ void query(float line_start  // begin at this line (ProgNr)
       }
     }
     line = get_next_prognr(line);
-  } while(line >= line_start && line < line_end+0.1); // endfor, for each valid line (ProgNr) command within selected range
+  } while(line >= line_start && (line * 10 < line_end*10+1)); // endfor, for each valid line (ProgNr) command within selected range
 }
 
 bool GetDevId() {
@@ -6927,12 +6916,10 @@ next_parameter:
 //    SetDateTime();
 // end calculate averages
 
-#ifdef CUSTOM_COMMANDS
   {
     custom_timer = millis();
     #include "BSB_LAN_custom.h"
   }
-#endif
 
   if (enable_max_cul) {
     byte max_str_index = 0;
@@ -7085,7 +7072,6 @@ next_parameter:
 #endif
 
   if (millis() - maintenance_timer > 60000) {
-    printFmtToDebug("%lu Ping!\r\n", millis());
     maintenance_timer = millis();
     //If device family and type was not detected at startup we will try recognize it every minute
     if (bus->getBusType() != BUS_PPS && !my_dev_fam) {
@@ -7370,6 +7356,9 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   Serial2.begin(115200, SERIAL_8N1); // hardware serial interface #2
 #else
   SerialOutput = &Serial;
+  #if (defined(ARDUINO_ESP32_POE) || defined(ARDUINO_ESP32_POE_ISO) || defined(ARDUINO_ESP32_EVB))
+  pinMode(3, INPUT);  // Workaround for underpowered CH340T on PoE or barrel-plug-powered Olimex, see https://github.com/fredlcore/BSB-LAN/issues/715#issuecomment-2717685796
+  #endif
   Serial.begin(115200); // hardware serial interface #0
 #endif
 
@@ -7666,7 +7655,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     int l = findLine(15000+i);
     if (l==-1) continue;
     // fill bitwise array with flags
-    uint16_t flags=active_cmdtbl[l].flags;
+    uint32_t flags=active_cmdtbl[l].flags;
     if ((flags & FL_EEPROM) == FL_EEPROM) {
       allow_write_pps_values[i / 8] |= (1 << (i % 8));
       if (active_cmdtbl[l].type == VT_TIMEPROG) {      // On PPS bus, VT_TIMEPROG occupies six "slots" in pps_values[], five of which are "invisible", so we have to give these the same writing rights as well
@@ -8046,9 +8035,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   init_ota_update();
 #endif
 
-#ifdef CUSTOM_COMMANDS
 #include "BSB_LAN_custom_setup.h"
-#endif
 
 #if !defined(ESP32)
   FsDateTime::setCallback(dateTime);
