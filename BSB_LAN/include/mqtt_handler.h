@@ -484,7 +484,7 @@ bool mqtt_send_discovery(bool create=true) {
             }
             if (decodedTelegram.data_type == DT_VALS && strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
               appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
-              appendStringBuffer(&sb_payload, "\"value_template\": \"{% if value | regex_match('^[-]+$') %}None{% else %}{{ value }}{% endif %}\",");
+              appendStringBuffer(&sb_payload, "\"value_template\": \"{%% if value | regex_match('^[-]+$') %%}None{%% else %%}{{ value }}{%% endif %%}\",");
             }
             sensor_type = MQTT_SENSOR;
           }
