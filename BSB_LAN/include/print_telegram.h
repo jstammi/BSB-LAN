@@ -1293,6 +1293,12 @@ void printTelegram(byte* msg, float query_line) {
       }
     }
   }
+
+  // If parameter is of numerical type and is disabled/inactive, then set it to the content of replaceDisabled:
+  if (!strncmp(decodedTelegram.value, "---", 3) && decodedTelegram.data_type == DT_VALS) {
+    strcpy(decodedTelegram.value, replaceDisabled);
+  }
+
   msg[bus->getPl_start()] = save_setmode;
   if (bus_type != BUS_PPS || (bus_type == BUS_PPS && !monitor)) {
     writelnToDebug();
