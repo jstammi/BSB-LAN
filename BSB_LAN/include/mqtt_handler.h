@@ -1,3 +1,5 @@
+#include "mqtt_handler_custom.h"
+
 char *build_pvalstr(bool extended);
 unsigned long mqtt_reconnect_timer;
 
@@ -105,7 +107,7 @@ void mqtt_sendtoBroker(parameter param) {
     // =============================================
     case 3:
       // Build the json heading
-      appendStringBuffer(&sb_payload, "{\"%s\":{\"device\":%d,\"parameter\":%g,\"name\":\"%s\",\"value\":\"%s\",\"desc\":\"", (MQTTDeviceID[0]?MQTTDeviceID:"BSB-LAN"), (param.dest_addr==-1?bus->getBusDest():param.dest_addr), param.number, decodedTelegram.prognrdescaddr, decodedTelegram.value);
+      appendStringBuffer(&sb_payload, "{\"%s\":{\"device\":%d,\"parameter\":%g,\"name\":\"%s\",\"value\":\"%s\",\"desc\":\"", mqtt_get_client_id(), (param.dest_addr==-1?bus->getBusDest():param.dest_addr), param.number, decodedTelegram.prognrdescaddr, decodedTelegram.value);
       if (decodedTelegram.data_type == DT_ENUM && decodedTelegram.enumdescaddr) {
         appendStringBuffer(&sb_payload, decodedTelegram.enumdescaddr);
       }
@@ -401,6 +403,7 @@ void mqtt_callback(char* topic, byte* passed_payload, unsigned int length) {
   } else { //command to heater
     printFmtToDebug("%s%g!%d=%s \r\n", (setmode==1?"S":"I"), param.number, param.dest_addr, payload);
     set(param.number,payload,setmode);  //command to heater
+    on_set(param.number,payload,setmode);
   }
   query(param.number);
   if ((LoggingMode & CF_LOGMODE_MQTT) && (LoggingMode & CF_LOGMODE_MQTT_ONLY_LOG_PARAMS)) {   // If only log parameters are sent to MQTT broker, we need an exemption here if /poll is used via MQTT. Otherwise, query() will publish the parameter anyway.
@@ -528,9 +531,9 @@ bool mqtt_send_discovery(bool create=true) {
         if (sensor_type == MQTT_TEXT && decodedTelegram.unit[0]) {
           appendStringBuffer(&sb_payload, " (%s)", decodedTelegram.unit);
         }
-        appendStringBuffer(&sb_payload, "\",\"device\":{\"name\":\"%s\",\"identifiers\":\"%s-%02X%02X%02X%02X%02X%02X\",\"manufacturer\":\"bsb-lan.de\",\"model\":\"" MAJOR "." MINOR "." PATCH "\"}}", MQTTTopicPrefix, MQTTTopicPrefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        appendStringBuffer(&sb_payload, "\",\"device\":{\"name\":\"%s\",\"identifiers\":\"%s-%02X%02X%02X%02X%02X%02X\",\"manufacturer\":\"bsb-lan.de\",\"model\":\"" MAJOR "." MINOR "." PATCH "\"}}", mqtt_get_client_id(), MQTTTopicPrefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-        appendStringBuffer(&sb_topic, "BSB-LAN/%g-%d-%d-%d/config", line, active_cmdtbl[i].dev_fam, active_cmdtbl[i].dev_var, my_dev_serial);
+        appendStringBuffer(&sb_topic, "%s/%g-%d-%d-%d/config", MQTTTopicPrefix, line, active_cmdtbl[i].dev_fam, active_cmdtbl[i].dev_var, my_dev_serial);
 
         replace_char(MQTTTopic, '.', '-');
         if (!create) {
