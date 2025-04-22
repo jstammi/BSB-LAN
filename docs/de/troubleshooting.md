@@ -2,13 +2,14 @@
 
 BSB-LAN versucht, den Zugriff auf dein Heizsystem so einfach wie möglich zu gestalten, aber es kann immer etwas schiefgehen. Wenn du nach dem Lesen dieses Dokuments und der [FAQ](faq.md) immer noch ein Problem hast, öffne bitte [einen Bug-Report](https://github.com/fredlcore/BSB-LAN/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=%5BBUG%5D) auf der GitHub-Seite des Projekts und stelle sicher, dass du uns alle notwendigen Log-Dateien und weitere erforderliche Details, insbesondere vom Serial Monitor (oder kurz *SerMo*), zur Verfügung stellst.
 
-Bevor du das tust, stelle jedoch sicher, dass du die neueste Version von BSB-LAN aus dem Master-Repository (nicht die Release-Version) installierst, auch wenn deine Version nur ein paar Tage alt ist. Trotzdem könnte seitdem eine Menge passiert sein :)!
+Bevor du das tust, stelle jedoch sicher, dass du **die neueste Version von BSB-LAN aus dem Master-Repository** (nicht die Release-Version) installierst, auch wenn deine Version nur ein paar Tage alt ist. Trotzdem könnte seitdem eine Menge passiert sein :)!
 
 ### Verwendung des Serial Monitors
 - Öffne den Serial Monitor, indem du in der Arduino IDE zu ***Tools/Serial Monitor*** gehst.
 - Setze die Übertragungsgeschwindigkeit auf 115200 in der rechten oberen Ecke des Serial Monitor-Fensters.
 - Stelle sicher, dass du die Nachrichten direkt ab dem Moment kopierst, in dem dein Mikrocontroller bootet (angezeigt durch die Nachricht `READY`), bis zu dem Moment, in dem das Problem auftritt.
-- Sende bitte keine Screenshots, sondern nur Textdateien.
+- Sende bitte **keine Screenshots**, sondern **nur Textdateien**.
+- Schau' Dir mein kurzes [Tutorial-Video](https://youtu.be/DsYPhihl11o) an, wenn Du Fragen hast.
 
 Der Serial Monitor in der Arduino IDE hat derzeit einen Bug, der es dir nur ermöglicht, die Teile der Serial Monitor-Nachrichten zu kopieren, die auf dem Bildschirm sichtbar sind. Auch wenn das bedeutet, dass das Kopieren größerer Teile der Log-Nachrichten mühsam ist, musst du trotzdem den kompletten Log bereitstellen, um Unterstützung zu erhalten. Es hilft ein wenig, die Größe des Serial Monitor-Fensters zu vergrößern.
 
@@ -41,7 +42,7 @@ Wenn du die Einstellungen so geändert hast, dass du nicht mehr auf die Web-Ober
 
 ---
 ## Ich kann nur auf sehr wenige Parameter über BSB/LPB zugreifen!
-- BSB-LAN kommt zunächst nur mit einer kleinen Menge an Parametern, die auf (fast) jedem Heizsystem funktionieren. Du musst eine [gerätespezifische Parameterliste erstellen](install.md#generating-the-device-specific-parameter-list).
+- BSB-LAN kommt zunächst nur mit einer kleinen Menge an Parametern, die auf (fast) jedem Heizsystem funktionieren. Du musst eine [gerätespezifische Parameterliste erstellen](install.md#generieren-der-geratespezifischen-parameterliste). Wenn nach dem Hinzufügen der gerätespezifischen Parameterliste immer noch nur wenige Parameter angezeigt werden, dann wurde sehr die alte Datei nicht überschrieben, sondern wahrscheinlich eine zweite Kopie hinzugefügt (die dann beim Kompilieren ignoriert wird).
 
 ---
 ## Kategorienliste plötzlich sehr klein
@@ -70,7 +71,8 @@ Wenn du die Einstellungen so geändert hast, dass du nicht mehr auf die Web-Ober
 
 ---
 ## Raumtemperatur (oder ein anderer Parameter) kann nicht eingestellt werden
-- Überprüfe die Einstellungen von BSB-LAN und stelle sicher, dass [der Schreibzugriff aktiviert ist][WriteAccess] und auf *standard* oder *komplett* gesetzt ist.
+- Überprüfe die Einstellungen von BSB-LAN und stelle sicher, dass [der Schreibzugriff aktiviert ist][WriteAccess] und auf *standard* oder *komplett* gesetzt ist.  
+Darüber hinaus sind einige Parameter nur schreibbar. Die aktuelle Raumtemperatur kann z.B. über den Parameter 10000 nur geschrieben, aber nicht ausgelesen werden. Zur Überprüfung sind dann die entsprechenden Parameter in der Kategorie `Status` zu suchen, z.B. ist Parameter 8740 für viele Heizungen die Ist-Temperatur für Heizkreis 1.
 
 ---
 ## Web-Oberfläche hängt sich beim Herstellen einer neuen Verbindung auf

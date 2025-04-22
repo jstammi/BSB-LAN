@@ -1,12 +1,12 @@
 #if defined(ARDUINO) && ARDUINO >= 100
-#include "Arduino.h"
+  #include "Arduino.h"
 #else
-#include "WProgram.h"
+  #include "WProgram.h"
 #endif
 #if defined(ESP32)
-#include "driver/uart.h"
-#include "soc/uart_struct.h"
-#include "soc/uart_reg.h"
+  #include "driver/uart.h"
+  #include "soc/uart_struct.h"
+  #include "soc/uart_reg.h"
 #endif
 
 #include "bsb.h"
@@ -137,7 +137,7 @@ void BSB::print(byte* msg) {
 }
 
 // Receives a message and stores it to buffer
-boolean BSB::Monitor(byte* msg) {
+bool BSB::Monitor(byte* msg) {
   unsigned long int ts;
   byte i=0;
     
@@ -175,7 +175,7 @@ bool BSB::GetMessage(byte* msg) {
   byte i=0;
   uint8_t read;
 
-  while (serial->available() > 0) {
+  while (serial->available() > 0 && i < 33) {
     // Read serial data...
     read = readByte();
 /*
@@ -220,7 +220,7 @@ bool BSB::GetMessage(byte* msg) {
         delay(4);   // I wonder why HardwareSerial needs longer than SoftwareSerial until a character is ready to be processed. Also, why 3ms are fine for the Mega, but at least 4ms are necessary on the Due
       }
       // read the rest of the message
-      while (serial->available() > 0) {
+      while (serial->available() > 0 && i<33) {
         read = readByte();
         msg[i++] = read;
 /*
@@ -654,8 +654,8 @@ int8_t BSB::Send(uint8_t type, uint32_t cmd, byte* rx_msg, byte* tx_msg, byte* p
   return BUS_NOMATCH;
 }
 
-boolean BSB::rx_pin_read() {
-  return boolean(* portInputRegister(digitalPinToPort(rx_pin)) & digitalPinToBitMask(rx_pin)) ^ 1;
+bool BSB::rx_pin_read() {
+  return bool(* portInputRegister(digitalPinToPort(rx_pin)) & digitalPinToBitMask(rx_pin)) ^ 1;
 }
 
 uint8_t BSB::readByte() {

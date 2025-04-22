@@ -717,7 +717,7 @@ void loadCategoryDescAddr() {
  * *************************************************************** */
 void printTelegram(byte* msg, float query_line) {
   resetDecodedTelegram();
-/*
+  /*
 #if !DEBUG
   // suppress DE telegrams
   if (msg[0]==0xDE) return;
@@ -751,7 +751,7 @@ void printTelegram(byte* msg, float query_line) {
     SerialPrintType(decodedTelegram.msg_type); // message type, human readable
     printFmtToDebug(" ");
 
-    if (decodedTelegram.msg_type == TYPE_SET) {   // temporarily 
+    if (decodedTelegram.msg_type == TYPE_SET) {   // temporarily
       msg[bus->getPl_start()]=0;
     }
   } else {
@@ -801,7 +801,7 @@ void printTelegram(byte* msg, float query_line) {
     while (1) {
       i = findLine(query_line);
       c = active_cmdtbl[i].cmd;
-      uint16_t dev_flags = active_cmdtbl[i].flags;
+      uint32_t dev_flags = active_cmdtbl[i].flags;
       if (((dev_flags & FL_NOSWAP_QUR) || (msg[4+bus->offset] & 0x0F) == TYPE_INF)) {  // if the QUR telegram is modified (in the sense that the first two bytes are not swapped), then the ANS telegram is also affected in the same way (i.e. the first two bytes are swapped here)
         c=((c & 0xFF000000) >> 8) | ((c & 0x00FF0000) << 8) | (c & 0x0000FFFF);
       }
@@ -824,7 +824,7 @@ void printTelegram(byte* msg, float query_line) {
     line = active_cmdtbl[i].line;
     while (c!=CMD_END) {
       if ((c & 0xFF00FFFF) == (cmd & 0xFF00FFFF) || (bus_type == BUS_PPS && ((c & 0x00FF0000) >> 16 == pps_cmd))) {
-        uint16_t dev_flags = active_cmdtbl[i].flags;
+        uint32_t dev_flags = active_cmdtbl[i].flags;
         uint8_t dev_fam = active_cmdtbl[i].dev_fam;
         uint8_t dev_var = active_cmdtbl[i].dev_var;
         match_line = active_cmdtbl[i].line;
@@ -897,7 +897,7 @@ void printTelegram(byte* msg, float query_line) {
     // Entry in command table is a documented command code
     decodedTelegram.prognr=active_cmdtbl[i].line;
 
-    printFmtToDebug("%4.1f ",decodedTelegram.prognr);
+    printFmtToDebug("%4.1f",decodedTelegram.prognr);
 
     // print category
     loadPrognrElementsFromTable(query_line, i);
@@ -938,7 +938,8 @@ void printTelegram(byte* msg, float query_line) {
     printFmtToDebug("len ERROR %d", msg[bus->getLen_idx()]);
   } else {
     if (data_len > 0) {
-      for (int x=-1; x<data_len; x++) {
+      decodedTelegram.payload_length = data_len;
+      for (int x=0; x<data_len; x++) {
         decodedTelegram.payload[x] = msg[bus->getPl_start()+x];
       }
       if (known) {
@@ -1006,6 +1007,7 @@ void printTelegram(byte* msg, float query_line) {
             case VT_CUBICMETER: //  u32 / 10
             case VT_CUBICMETER_N: //  u32 / 10
             case VT_UINT100:  // u32 / 100
+            case VT_UINT100_H:  // u32 / 100 h
             case VT_DWORD: // s32
             case VT_DWORD_N: // s32
             case VT_DWORD10:
@@ -1076,7 +1078,7 @@ void printTelegram(byte* msg, float query_line) {
             case VT_ENERGY_WORD_N: // u16 / 10.0 kWh
             case VT_SPF: // u16 / 100
             case VT_ENERGY_CONTENT: // u16 / 10.0 kWh/m³
-            case VT_CURRENT: // u16 / 100 uA
+            case VT_CURRENT: // u16 / 100 uA 
             case VT_CURRENT1000:
             case VT_PROPVAL: // u16 / 16
             case VT_SPEED: // u16
@@ -1166,11 +1168,20 @@ void printTelegram(byte* msg, float query_line) {
 //                  undefinedValueToBuffer(decodedTelegram.value);
                   printToDebug(decodedTelegram.value);
                 }
+              } else if (decodedTelegram.flags > 65535) {
+                uint8_t enum_pos = (decodedTelegram.flags & 0x0000F0000) >> 16;
+                uint8_t enum_len = (decodedTelegram.flags & 0x000F00000) >> 20;
+                if (enum_len == 2) {
+                  long lval = (long(msg[bus->getPl_start()+enum_pos])<<8)+long(msg[bus->getPl_start()+enum_pos+1]);
+                  printENUM(decodedTelegram.enumstr,decodedTelegram.enumstr_len,lval,1);
+                } else {
+                  printENUM(decodedTelegram.enumstr,decodedTelegram.enumstr_len,msg[bus->getPl_start()+enum_pos],1);
+                }
               } else {
                 printToDebug(" VT_ENUM len !=2 && len != 3: ");
                 prepareToPrintHumanReadableTelegram(msg, data_len, bus->getPl_start());
                 decodedTelegram.error = 256;
-                }
+              }
               break;
             case VT_CUSTOM_ENUM: // custom enum - extract information from a telegram that contains more than one kind of information/data. First byte of the ENUM is the index to the payload where the data is located. This will then be used as data to be displayed/evaluated.
             {
@@ -1220,6 +1231,18 @@ void printTelegram(byte* msg, float query_line) {
                 }
               } else {
                 printToDebug(" VT_STRING len == 0: ");
+                prepareToPrintHumanReadableTelegram(msg, data_len, bus->getPl_start());
+                decodedTelegram.error = 256;
+                }
+              break;
+
+            case VT_BINARY: // binary (as hex string)
+              if (data_len > 0) {
+                printToDebug((char*)&msg[bus->getPl_start()]);
+                bin2hex(decodedTelegram.value,msg+bus->getPl_start(),data_len,0);
+                decodedTelegram.value[2*data_len]='\0';
+              } else {
+                printToDebug(" VT_BINARY len == 0: ");
                 prepareToPrintHumanReadableTelegram(msg, data_len, bus->getPl_start());
                 decodedTelegram.error = 256;
                 }

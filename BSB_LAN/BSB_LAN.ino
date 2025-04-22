@@ -10,9 +10,9 @@
  *         (based on the code and work from many other developers. Many thanks!)
  *         Special thanks to Ulf Diekmann for maintaining the manual up to version 3.3 and to Sergey Dukachev for lots of helpful code optimizations and restructurings as well as providing a profound Russian localization since version 0.43
  *
- * 
+ *
  * ChangeLog has moved to separate file docs/CHANGELOG.md
- * 
+ *
  */
 
 #if defined(__AVR__)
@@ -109,7 +109,7 @@
 #define REMOVE 0
 #define CREATE 1
 
-// These are configuration options that are set in main code in order not to confuse ordinary users. 
+// These are configuration options that are set in main code in order not to confuse ordinary users.
 // If you really feel you need to change them, undefine them in BSB_LAN_config.h and then set them to your desired value.
 // e.g.:
 // #undef UDP_LOG_PORT
@@ -127,8 +127,9 @@ typedef struct {
   uint16_t dev_fam;
   uint16_t dev_var;
   uint8_t dev_id;
+  uint16_t dev_oc;
   uint32_t dev_serial;
-  char name[33];
+  char name[18];
 } device_map;
 device_map dev_lookup[10];
 
@@ -145,7 +146,7 @@ void createTemporaryAP();
 void loop();
 int set(float line, const char *val, bool setcmd);
 uint8_t recognizeVirtualFunctionGroup(float nr);
-void GetDevId();
+bool GetDevId();
 void SerialPrintRAW(byte* msg, byte len);
 int bin2hex(char *toBuffer, byte *fromAddr, int len, char delimiter);
 const char* printError(uint16_t error);
@@ -153,14 +154,19 @@ void query(float line);
 void startLoggingDevice();
 void resetAverageCalculation();
 void connectToMaxCul();
-void SetDevId();
 void mqtt_callback(char* topic, byte* payload, unsigned int length);  //Luposoft: predefintion
 void mqtt_sendtoBroker(parameter param);
 uint16_t printKat(uint8_t cat, bool print_val, bool debug_output=true);
 
 #include "src/Base64/src/Base64.h"
 
-#define MAX_HEATINGTBL 500    // maximum number of entries for temporary device specific parameter list. If too low, adjust via #undef/#define MAX_HEATINGTBL in BSB_LAN_config.h
+// MAX variables (can be overwritten in BSB_LAN_config.h if necessary)
+uint32_t max_cul_rf_addr = 0x123456; // RF address of MAX_CUL to which devices are paired to
+uint8_t max_flag = 0x00;             // Flag - set to 0x04 when addressing a group ("room"), set to 0x00 for addressing individual devices. 
+uint8_t max_group_id = 0x00;         // Group ID ("room number") - set to 0x00 when addressing individual devices, otherwise use "room" number here.
+uint8_t max_temp_mode = 0x01;        // Temperature mode: 0x00 - auto, 0x01 - manual, 0x02 = vacation (not supported here), 0x03 = boost (not supported here)
+
+#define MAX_HEATINGTBL 500           // maximum number of entries for temporary device specific parameter list. If too low, adjust via #undef/#define MAX_HEATINGTBL in BSB_LAN_config.h
 
 //#include "src/BSB/BSBSoftwareSerial.h"
 #include "src/BSB/bsb.h"
@@ -169,7 +175,7 @@ uint16_t printKat(uint8_t cat, bool print_val, bool debug_output=true);
 
 #define REQUIRED_CONFIG_VERSION 39
 #if CONFIG_VERSION < REQUIRED_CONFIG_VERSION
-  #error "Your BSB_LAN_config.h is not up to date! Please use the most recent BSB_LAN_config.h.default, rename it to BSB_LAN_config.h and make the necessary changes to this new one." 
+  #error "Your BSB_LAN_config.h is not up to date! Please use the most recent BSB_LAN_config.h.default, rename it to BSB_LAN_config.h and make the necessary changes to this new one."
 #endif
 
 
@@ -219,14 +225,8 @@ WebServer update_server(8080);
 EEPROMClass EEPROM_ESP((const char *)"nvs");
   #define EEPROM EEPROM_ESP     // This is a dirty hack because the Arduino IDE does not pass on #define NO_GLOBAL_EEPROM which would prevent the double declaration of the EEPROM object
 #else
-  #ifdef WIFISPI
-    #warning "Support for WiFi on Arduino Due may be removed in future versions. Please inform Frederik (bsb (ät) code-it.de) that you are still using it."
-    #include "src/WiFiSpi/src/WiFiSpiUdp.h"
-WiFiSpiUdp udp, udp_log;
-  #else
-    #include <EthernetUdp.h>
+  #include <EthernetUdp.h>
 EthernetUDP udp, udp_log;
-  #endif
 #endif
 
 
@@ -253,13 +253,6 @@ BlueDot_BME280 *bme;  //Set 2 if you need two sensors.
 #define TCA9548A_ADDR 0x70
 
 bool client_flag = false;
-
-#ifdef WIFISPI
-    #include "src/WiFiSpi/src/WiFiSpi.h"
-using ComServer = WiFiSpiServer;
-using ComClient = WiFiSpiClient;
-    #define WiFi WiFiSpi
-#endif
 
 bool localAP = false;
 unsigned long localAPtimeout = millis();
@@ -480,7 +473,7 @@ uint16_t error; //0 - ok, 7 - parameter not supported, 1-255 - LPB/BSB bus error
 uint8_t msg_type; //telegram type
 uint8_t src_addr; //telegram address
 uint8_t dest_addr; //telegram address
-uint16_t flags; //flags
+uint32_t flags; //flags
 uint8_t readwrite; // 0 - read/write, 1 - read only, 2 - write only
 uint8_t isswitch; // 0 - Any type, 1 - ONOFF or YESNO type
 uint8_t type; //prog type (active_cmdtbl[].type). VT_*
@@ -499,6 +492,7 @@ char *telegramDump; //Telegram dump for debugging in case of error. Dynamic allo
 
 uint8_t my_dev_fam = DEV_FAM(DEV_NONE);
 uint8_t my_dev_var = DEV_VAR(DEV_NONE);
+uint16_t my_dev_oc = 0;
 uint32_t my_dev_serial = 0;
 uint8_t default_flag = DEFAULT_FLAG;  // necessary for ESP32 SDK 2.0.4 and above to prevent tautological-compare errors
 
@@ -534,11 +528,9 @@ static uint16_t baseConfigAddrInEEPROM = 0; //offset from start address in EEPRO
 
 #include "json-api-version.h"
 #include "bsb-version.h"
-const char BSB_VERSION[] = MAJOR "." MINOR "." PATCH "-" COMPILETIME;
+const char BSB_VERSION[] = MAJOR "." MINOR "." PATCH "-" COMPILETIME "(" VARIANT ")";
 
-#ifdef CUSTOM_COMMANDS
 #include "BSB_LAN_custom_global.h"
-#endif
 
 /* ******************************************************************
  *      ************** Program code starts here **************
@@ -731,7 +723,7 @@ void printHTTPheader(uint16_t code, int mimetype, bool addcharset, bool isGzip, 
   printToWebClient("\r\n");
   if (isDownload) {
     printToWebClient("Content-Disposition: attachment; filename=\"BSB-LAN-");
-    printFmtToWebClient("%03u-%03u-%u.txt\"\r\n", my_dev_fam, my_dev_var, my_dev_serial);
+    printFmtToWebClient("%03u-%03u-%u-%u.txt\"\r\n", my_dev_fam, my_dev_var, my_dev_oc, my_dev_serial);
   }
 }
 
@@ -920,18 +912,19 @@ inline uint8_t get_cmdtbl_category(int i) {
 //  return active_cmdtbl[i].category;
 }
 
-void set_temp_destination(int16_t destAddr){
+bool set_temp_destination(int16_t destAddr){
   if (destAddr == -1) {
     destAddr = dest_address;
   }
   if (destAddr != bus->getBusDest()) {
-    printFmtToDebug("Setting temporary destination to %d\r\n", destAddr);
+    printFmtToDebug("Setting temporary destination to %d, ", destAddr);
     bus->setBusType(bus->getBusType(), bus->getBusAddr(), destAddr);
-    GetDevId();
+    return GetDevId();
   } else {
     if (debug_mode == DEVELOPER_DEBUG) {
       printFmtToDebug("Bus destination already set to %d, no change necessary.\r\n", destAddr);
     }
+    return true;
   }
 }
 
@@ -1101,7 +1094,7 @@ int findLine(float line)
     c = active_cmdtbl[i].cmd;
     uint8_t dev_fam = active_cmdtbl[i].dev_fam;
     uint8_t dev_var = active_cmdtbl[i].dev_var;
-    uint16_t dev_flags = active_cmdtbl[i].flags;
+    uint32_t dev_flags = active_cmdtbl[i].flags;
     if (verbose == DEVELOPER_DEBUG) printFmtToDebug("l = %.1f, dev_fam = %d,  dev_var = %d, dev_flags = %d\r\n", l, dev_fam, dev_var, dev_flags);
 
     if ((dev_fam == my_dev_fam || dev_fam == DEV_FAM(DEV_ALL)) && (dev_var == my_dev_var || dev_var == DEV_VAR(DEV_ALL))) {
@@ -1889,15 +1882,6 @@ void generateConfigPage(void) {
 // list of enabled modules
   printToWebClient(MENU_TEXT_MOD ": <BR>\r\n"
 
-  #ifdef CUSTOM_COMMANDS
-  #ifdef ANY_MODULE_COMPILED
-  ", "
-  #else
-  #define ANY_MODULE_COMPILED
-  #endif
-  "CUSTOM_COMMANDS"
-  #endif
-
   #ifdef USE_ADVANCED_PLOT_LOG_FILE
   #ifdef ANY_MODULE_COMPILED
   ", "
@@ -1905,15 +1889,6 @@ void generateConfigPage(void) {
   #define ANY_MODULE_COMPILED
   #endif
   "USE_ADVANCED_PLOT_LOG_FILE"
-  #endif
-
-  #ifdef WIFISPI
-  #ifdef ANY_MODULE_COMPILED
-  ", "
-  #else
-  #define ANY_MODULE_COMPILED
-  #endif
-  "WIFISPI"
   #endif
 
   #if !defined (ANY_MODULE_COMPILED)
@@ -2143,7 +2118,7 @@ bool SaveConfigFromRAMtoEEPROM() {
 
   if (buschanged) {
     setBusType();
-    SetDevId();
+    GetDevId();
   }
   return needReboot;
 }
@@ -2351,7 +2326,7 @@ void generateWebConfigPage(bool printOnly) {
     if(!printOnly){
       switch (cfg.input_type) {
         case CPI_TEXT:
-        printFmtToWebClient("<input type=text id='option_%d' name='option_%d' ", cfg.id + 1, cfg.id + 1);
+        printFmtToWebClient("<input type='%s' id='option_%d' name='option_%d' ", cfg.flags & OPT_FL_PASSWORD ? "password":"text", cfg.id + 1, cfg.id + 1);
         switch (cfg.var_type) {
           case CDT_MAC:
             printToWebClient("pattern='([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}'");
@@ -2377,8 +2352,8 @@ void generateWebConfigPage(bool printOnly) {
     } else {
       printFmtToWebClient("<output id='option_%d' name='option_%d'>\r\n", cfg.id + 1, cfg.id + 1);
     }
-  
-  
+
+
     switch (cfg.var_type) {
       case CDT_VOID: break;
       case CDT_BYTE:
@@ -2459,7 +2434,7 @@ void generateWebConfigPage(bool printOnly) {
         break;
       default: break;
     }
-  
+
   //Closing tag
     if(!printOnly){
       switch (cfg.input_type) {
@@ -2815,7 +2790,7 @@ int set(float line      // the ProgNr of the heater parameter
   if (i<0) return 0;        // no match
 
   uint32_t c = active_cmdtbl[i].cmd;
-  uint16_t dev_flags = active_cmdtbl[i].flags;
+  uint32_t dev_flags = active_cmdtbl[i].flags;
   // Check for readonly parameter
   if (programIsreadOnly(dev_flags)) {
     printlnToDebug("Parameter is readonly!");
@@ -2842,6 +2817,20 @@ int set(float line      // the ProgNr of the heater parameter
     {
       if(line == (float)BSP_INTERNAL + 6){
         if (atoi(val)) resetDurations(); return 1; // reset furnace duration
+      }
+      if ((line >= (float)BSP_MAX && line < (float)BSP_MAX + MAX_CUL_DEVICES)) {// set MAX destination temperature
+        max_dst_temp[(int)line - BSP_MAX] = atof(val) * 2;
+        Serial.println(max_dst_temp[(int)line - BSP_MAX]);
+        char max_send[34];
+        sprintf(max_send, "Zs0B88%02X40%06lX%06lX%02X%02X", max_flag, max_cul_rf_addr, max_devices[(int)line - BSP_MAX], max_group_id, (max_temp_mode << 6) | max_dst_temp[(int)line - BSP_MAX]);
+        printlnToDebug(max_send);
+        if (max_cul->connected()) {
+          max_cul->println(max_send);
+        } else {
+          printlnToDebug("MAX_CUL not connected, cannot send updated temperature!")
+          return 2;
+        }
+        return 1;
       }
       if ((line >= (float)BSP_FLOAT && line < (float)BSP_FLOAT + numCustomFloats)) {// set custom_float
         custom_floats[(int)line - BSP_FLOAT] = atof(val);
@@ -2919,7 +2908,7 @@ int set(float line      // the ProgNr of the heater parameter
       default: pps_values[cmd_no] = atoi(val); break;
     }
 
-    uint16_t flags=active_cmdtbl[i].flags;
+    uint32_t flags=active_cmdtbl[i].flags;
     if ((flags & FL_EEPROM) == FL_EEPROM && EEPROM_ready) {
 //    if(EEPROM_ready && (allow_write_pps_values[cmd_no / 8] & (1 << (cmd_no % 8)))) {
       printFmtToDebug("Writing EEPROM slot %d with value %u", cmd_no, pps_values[cmd_no]);
@@ -3036,6 +3025,7 @@ int set(float line      // the ProgNr of the heater parameter
 
     // 32-bit representations
     case VT_UINT100:
+    case VT_UINT100_H:
     case VT_ENERGY:
     case VT_ENERGY_N:
     case VT_ENERGY10:
@@ -3855,9 +3845,9 @@ void query(float line) {  // line (ProgNr)
 #endif
 
   i=findLine(line);
-      uint32_t c = active_cmdtbl[i].cmd;
+  uint32_t c = active_cmdtbl[i].cmd;
   uint8_t query_type = TYPE_QUR;
-      uint16_t dev_flags = active_cmdtbl[i].flags;
+  uint32_t dev_flags = active_cmdtbl[i].flags;
     if (dev_flags & FL_QINF_ONLY) {
       query_type = TYPE_QINF;
     }
@@ -4011,10 +4001,10 @@ void query(float line_start  // begin at this line (ProgNr)
       }
     }
     line = get_next_prognr(line);
-  } while(line >= line_start && line < line_end+1); // endfor, for each valid line (ProgNr) command within selected range
+  } while(line >= line_start && (line * 10 < line_end*10+1)); // endfor, for each valid line (ProgNr) command within selected range
 }
 
-void GetDevId() {
+bool GetDevId() {
   if (bus->getBusType() != BUS_PPS) {
     if (dev_lookup[0].dev_id == 0xFF) {
       byte  msg[33] = { 0 };
@@ -4036,7 +4026,7 @@ void GetDevId() {
           bool found = false;
           for (uint i=0;i<sizeof(dev_array);i++) {
             if (dev_array[i] == 0) break;
-            if (dev_array[i] == cat_dev) found = true; 
+            if (dev_array[i] == cat_dev) found = true;
           }
           if (found == false) {
             dev_array[arr_counter] = cat_dev;
@@ -4057,7 +4047,7 @@ void GetDevId() {
         case BUS_BSB: bus->setBusType(BUS_BSB, bus->getBusAddr(), 0x7F); break;
         case BUS_LPB: bus->setBusType(BUS_LPB, bus->getBusAddr(), 0xFF); break;
       }
-    
+
       if (bus->Send(TYPE_QINF, 0x053D0064, msg, tx_msg, NULL, 0, false) == BUS_OK) {
         printTelegram(tx_msg, -1);
         unsigned long startquery = millis();
@@ -4078,6 +4068,7 @@ void GetDevId() {
                 dev_lookup[i].dev_id = decodedTelegram.src_addr;
                 dev_lookup[i].dev_fam = msg[10+bus->offset];
                 dev_lookup[i].dev_var = msg[12+bus->offset];
+                dev_lookup[i].dev_oc = (msg[13+bus->offset] << 8) + msg[14+bus->offset];
                 dev_lookup[i].dev_serial = (msg[15+bus->offset] << 24) + (msg[16+bus->offset] << 16) + (msg[17+bus->offset] << 8) + (msg[18+bus->offset]);
                 dev_lookup[i].name[0] = '\0';
                 break;
@@ -4093,7 +4084,7 @@ void GetDevId() {
             printTelegram(tx_msg, -1);
             printTelegram(msg, -1);
             memcpy(dev_lookup[i].name, &msg[bus->getPl_start()], 17);
-          } 
+          }
         }
         printlnToDebug("Bus devices found:");
         for (int i=0;i<(int)sizeof(dev_lookup)/(int)sizeof(dev_lookup[0]);i++) {
@@ -4101,6 +4092,7 @@ void GetDevId() {
             if (i < anz_dev-1) {
               printFmtToDebug("Only %d out of %d devices have responded, will run device detection again next time.\r\n", i+1, anz_dev);
               dev_lookup[0].dev_id = 0xFF;
+              return false;
             }
             break;
           }
@@ -4113,30 +4105,15 @@ void GetDevId() {
       if (dev_lookup[i].dev_id == bus->getBusDest()) {
         my_dev_fam = dev_lookup[i].dev_fam;
         my_dev_var = dev_lookup[i].dev_var;
+        my_dev_oc = dev_lookup[i].dev_oc;
         my_dev_serial = dev_lookup[i].dev_serial;
+        printFmtToDebug("device family: %d, device variant: %d\r\n", my_dev_fam, my_dev_var);
+        return true;
       }
     }
   }
-  return;
-}
-
-/** *****************************************************************
- *  Function:  SetDevId()
- *  Does:      Sets my_dev_fam and my_dev_var
- *
- * Pass parameters:
- *   none
- * Parameters passed back:
- *   none
- * Function value returned:
- *   none
- * Global resources used:
- *   none
- * *************************************************************** */
-
-void SetDevId() {
-  GetDevId();
-  printFmtToDebug("Device family: %d\r\nDevice variant: %d\r\n", my_dev_fam, my_dev_var);
+  printFmtToDebug("unknown destination ID, sticking to device family: %d, device variant: %d\r\n", my_dev_fam, my_dev_var);
+  return true;
 }
 
 /** *****************************************************************
@@ -4532,7 +4509,7 @@ void loop() {
           {IPAddress t = Ethernet.localIP();
           printFmtToDebug("%d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);}
         break;
-  
+
         default:
           //nothing happened
           break;
@@ -4601,7 +4578,7 @@ void loop() {
     loopCount = 0;
    // Read characters from client and assemble them in cLineBuffer
     bPlaceInBuffer=0;            // index into cLineBuffer
-    boolean isSerial = false;
+    bool isSerial = false;
     while (client.connected() || SerialOutput->available()) {
       if (client.available() || SerialOutput->available()) {
 
@@ -4921,14 +4898,17 @@ void loop() {
         // Starting MQTT auto discovery
         if (p[1]=='M') {
           p+=2;               // hopefully finds a digit there ...
-          boolean create=atoi(p);    // .. to convert
+          bool create=atoi(p);    // .. to convert
           uint8_t save_my_dev_fam = my_dev_fam;
           uint8_t save_my_dev_var = my_dev_var;
+          uint16_t save_my_dev_oc = my_dev_oc;
           uint32_t save_my_dev_serial = my_dev_serial;
           uint8_t destAddr = bus->getBusDest();
           uint8_t tempDestAddr = destAddr;
+          bool change_dest_success = true;
+          bool mqtt_success = false;
           if (p[1]=='!') {
-            set_temp_destination(atoi(&p[2]));
+            change_dest_success = set_temp_destination(atoi(&p[2]));
             tempDestAddr = bus->getBusDest();
           }
           webPrintHeader();
@@ -4939,14 +4919,17 @@ void loop() {
           }
           flushToWebClient();
           mqtt_connect();
-          boolean mqtt_success = mqtt_send_discovery(create);
+          if (change_dest_success == true) {
+            mqtt_success = mqtt_send_discovery(create);
+          }
           if (tempDestAddr != destAddr) {
             return_to_default_destination(destAddr);
             my_dev_fam = save_my_dev_fam;
             my_dev_var = save_my_dev_var;
+            my_dev_oc = save_my_dev_oc;
             my_dev_serial = save_my_dev_serial;
           }
-          if (mqtt_success) {
+          if (mqtt_success && change_dest_success) {
             printToWebClient("\r\n" MENU_TEXT_QFE "\r\n");
           } else {
             printToWebClient("\r\n" MENU_TEXT_QFF "\r\n");
@@ -4977,12 +4960,14 @@ void loop() {
           } else {
             uint8_t save_my_dev_fam = my_dev_fam;
             uint8_t save_my_dev_var = my_dev_var;
+            uint16_t save_my_dev_oc = my_dev_oc;
             uint32_t save_my_dev_serial = my_dev_serial;
             parameter param = parsingStringToParameter(p);
             line = param.number;
+            bool change_dest_success = true;
 
             if (param.dest_addr > -1) {
-              set_temp_destination(param.dest_addr);
+              change_dest_success = set_temp_destination(param.dest_addr);
 /*
               query(6225);
               my_dev_fam = strtod(decodedTelegram.value,NULL);
@@ -4992,7 +4977,7 @@ void loop() {
             }
 
             p=strchr(p,'=');    // search for '=' sign
-            if (p==NULL) {        // no match
+            if (p==NULL || change_dest_success == false) {        // no match
                 printToWebClient(MENU_TEXT_ER2 "\r\n");
             } else {
               p++;                   // position pointer past the '=' sign
@@ -5020,12 +5005,13 @@ void loop() {
 
                 }
               }
-              if (bus->getBusDest() != destAddr) {
-                return_to_default_destination(destAddr);
-                my_dev_fam = save_my_dev_fam;
-                my_dev_var = save_my_dev_var;
-                my_dev_serial = save_my_dev_serial;
-              }
+            }
+            if (bus->getBusDest() != destAddr) {
+              return_to_default_destination(destAddr);
+              my_dev_fam = save_my_dev_fam;
+              my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
+              my_dev_serial = save_my_dev_serial;
             }
           }
           if (!(httpflags & HTTP_FRAG)) webPrintFooter();
@@ -5036,6 +5022,7 @@ void loop() {
         if (p[1]=='K' && !isdigit(p[2])) {
           uint8_t save_my_dev_fam = my_dev_fam;
           uint8_t save_my_dev_var = my_dev_var;
+          uint16_t save_my_dev_oc = my_dev_oc;
           uint32_t save_my_dev_serial = my_dev_serial;
           uint8_t destAddr = bus->getBusDest();
           if (p[2]=='!') {
@@ -5072,6 +5059,7 @@ void loop() {
             return_to_default_destination(destAddr);
             my_dev_fam = save_my_dev_fam;
             my_dev_var = save_my_dev_var;
+            my_dev_oc = save_my_dev_oc;
             my_dev_serial = save_my_dev_serial;
           }
           break;
@@ -5093,7 +5081,7 @@ void loop() {
               case VT_BIT:
                 listEnumValues(decodedTelegram.enumstr, decodedTelegram.enumstr_len, NULL, " - ", NULL, "<br>\r\n", NULL, 0, PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST);
                 break;
-              default: 
+              default:
                 printToWebClient(MENU_TEXT_ER6);
                 break;
             }
@@ -5108,6 +5096,7 @@ void loop() {
           uint8_t destAddr = bus->getBusDest();
           uint8_t save_my_dev_fam = my_dev_fam;
           uint8_t save_my_dev_var = my_dev_var;
+          uint16_t save_my_dev_oc = my_dev_oc;
           uint32_t save_my_dev_serial = my_dev_serial;
           parameter param = parsingStringToParameter(&p[2]);
           float line = param.number;
@@ -5135,6 +5124,7 @@ void loop() {
             return_to_default_destination(destAddr);
             my_dev_fam = save_my_dev_fam;
             my_dev_var = save_my_dev_var;
+            my_dev_oc = save_my_dev_oc;
             my_dev_serial = save_my_dev_serial;
           }
 
@@ -5201,6 +5191,7 @@ void loop() {
             int temp_dev_fam = strtod(decodedTelegram.value,NULL);
             query_program_and_print_result(6226, "\r\n", NULL);
             int temp_dev_var = strtod(decodedTelegram.value,NULL);
+            query_program_and_print_result(6227, "\r\n", NULL);
             my_dev_fam = temp_dev_fam;
             my_dev_var = temp_dev_var;
             if (temp_dev_fam == 97) temp_dev_fam = 64;
@@ -5337,9 +5328,14 @@ void loop() {
                 esp_task_wdt_reset();
 #endif
                 timeout = millis() + 6000;
-                while (bus->Send(TYPE_IQ1, IA1_counter, msg, tx_msg) != BUS_OK && (millis() < timeout)) {
-                  printToWebClient("Didn't receive matching telegram, resending...\r\n");
-                  delay(500);
+                while (millis() < timeout && (msg[5+bus->offset] << 8 | msg[6+bus->offset]) != IA1_counter) {
+                  while (bus->Send(TYPE_IQ1, IA1_counter, msg, tx_msg) != BUS_OK && (millis() < timeout)) {
+                    printToWebClient("Didn't receive matching telegram, resending...\r\n");
+                    delay(500);
+                  }
+                  if ((msg[5+bus->offset] << 8 | msg[6+bus->offset]) != IA1_counter) {
+                    printToWebClient("Didn't receive requested line...\r\n");
+                  }
                 }
                 uint8_t id1 = msg[4+bus->offset];
                 uint8_t id2 = msg[7+bus->offset];
@@ -5377,9 +5373,14 @@ void loop() {
                 esp_task_wdt_reset();
 #endif
                 timeout = millis() + 6000;
-                while (bus->Send(TYPE_IQ2, IA2_counter, msg, tx_msg) != BUS_OK && (millis() < timeout)) {
-                  printToWebClient("Didn't receive matching telegram, resending...\r\n");
-                  delay(500);
+                while (millis() < timeout && msg[5+bus->offset] != IA2_counter) {
+                  while (bus->Send(TYPE_IQ2, IA2_counter, msg, tx_msg) != BUS_OK && (millis() < timeout)) {
+                    printToWebClient("Didn't receive matching telegram, resending...\r\n");
+                    delay(500);
+                  }
+                  if (msg[5+bus->offset] != IA2_counter) {
+                    printToWebClient("Didn't receive requested line...\r\n");
+                  }
                 }
                 bin2hex(outBuf + outBufLen, msg, msg[bus->getLen_idx()]+bus->getBusType(), ' ');
                 printToWebClient(outBuf + outBufLen);
@@ -5419,12 +5420,15 @@ void loop() {
             uint8_t tempDestAddr = destAddr;
             uint8_t save_my_dev_fam = my_dev_fam;
             uint8_t save_my_dev_var = my_dev_var;
+            uint16_t save_my_dev_oc = my_dev_oc;
             uint32_t save_my_dev_serial = my_dev_serial;
             uint8_t type = strtol(&p[2],NULL,16);
             uint32_t c = (uint32_t)strtoul(&p[5],NULL,16);
             uint8_t param[MAX_PARAM_LEN] = { 0 };
             uint8_t param_len = 0;
             uint8_t counter = 13;
+            bool change_dest_success = true;
+            int8_t return_value = 0;
             if (p[counter] == ',') {
               counter++;
               while (p[counter] && p[counter+1] && p[counter] != '!') {
@@ -5435,9 +5439,11 @@ void loop() {
             }
             if (p[counter] == '!') {
               tempDestAddr = atoi(&p[counter+1]);
-              set_temp_destination(tempDestAddr);
+              change_dest_success = set_temp_destination(tempDestAddr);
             }
-            int8_t return_value = bus->Send(type, c, msg, tx_msg, param, param_len, true);
+            if (change_dest_success == true) {
+              return_value = bus->Send(type, c, msg, tx_msg, param, param_len, type==TYPE_INF?false:true);
+            }
             if (return_value != BUS_OK) {
               printlnToDebug("bus send failed");  // to PC hardware serial I/F
             } else {
@@ -5465,6 +5471,7 @@ void loop() {
               return_to_default_destination(destAddr);
               my_dev_fam = save_my_dev_fam;
               my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
               my_dev_serial = save_my_dev_serial;
             }
           } else {
@@ -5490,6 +5497,7 @@ void loop() {
           int16_t tempDestAddrOnPrevIteration = 0;
           uint8_t save_my_dev_fam = my_dev_fam;
           uint8_t save_my_dev_var = my_dev_var;
+          uint16_t save_my_dev_oc = my_dev_oc;
           uint32_t save_my_dev_serial = my_dev_serial;
           uint8_t opening_brackets = 0;
           char* json_token = strtok(p, "=,"); // drop everything before "="
@@ -5578,7 +5586,7 @@ void loop() {
                 } else {
                   not_first = true;
                 }
-                printFmtToWebClient("    { \"dev_id\": %d,  \"dev_fam\": %d, \"dev_var\": %d, \"dev_serial\": %d, \"dev_name\": \"%s\" }", dev_lookup[i].dev_id, dev_lookup[i].dev_fam, dev_lookup[i].dev_var, dev_lookup[i].dev_serial, dev_lookup[i].name);
+                printFmtToWebClient("    { \"dev_id\": %d,  \"dev_fam\": %d, \"dev_var\": %d, \"dev_serial\": %d, \"dev_oc\": %d, \"dev_name\": \"%s\" }", dev_lookup[i].dev_id, dev_lookup[i].dev_fam, dev_lookup[i].dev_var, dev_lookup[i].dev_oc, dev_lookup[i].dev_serial, dev_lookup[i].name);
               }
             }
             printToWebClient("\r\n  ],\r\n");
@@ -5645,16 +5653,18 @@ void loop() {
           if (p[2] == 'B'){ // backup settings to file
             uint8_t save_my_dev_fam = my_dev_fam;
             uint8_t save_my_dev_var = my_dev_var;
+            uint8_t save_my_dev_oc = my_dev_oc;
             uint32_t save_my_dev_serial = my_dev_serial;
             int16_t destAddr = bus->getBusDest();
             int16_t tempDestAddr = destAddr;
+            bool change_dest_success = true;
             if (p[3]=='!') {
-              set_temp_destination(atoi(&p[4]));
+              change_dest_success = set_temp_destination(atoi(&p[4]));
               tempDestAddr = bus->getBusDest();
             }
 
             bool notfirst = false;
-            for (uint cat = 1; cat < CAT_UNKNOWN; cat++) { //Ignore date/time category
+            for (uint cat = 1; change_dest_success == true && cat < CAT_UNKNOWN; cat++) { //Ignore date/time category
 
               printKat(cat, true, true);
               if ((bus->getBusType() != BUS_PPS && decodedTelegram.error != 258 && decodedTelegram.error != 263) || (bus->getBusType() == BUS_PPS && (cat == CAT_PPS || cat == CAT_USERSENSORS))) {
@@ -5694,6 +5704,7 @@ next_parameter:
               return_to_default_destination(destAddr);
               my_dev_fam = save_my_dev_fam;
               my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
               my_dev_serial = save_my_dev_serial;
             }
 
@@ -5714,6 +5725,7 @@ next_parameter:
             }
           }
           int cat_dev_id = -1;
+          bool change_dest_success = true;
           tempDestAddr = destAddr;
           tempDestAddrOnPrevIteration = destAddr;
           while ((client.available() && opening_brackets > 0) || json_token!=NULL) {
@@ -5819,9 +5831,9 @@ next_parameter:
               }
             }
             if (tempDestAddr != tempDestAddrOnPrevIteration) {
-              set_temp_destination(tempDestAddr);
+              change_dest_success = set_temp_destination(tempDestAddr);
             }
-            if (output || json_token != NULL) {
+            if ((output || json_token != NULL) && change_dest_success == true) {
               if (p[2] != 'K' && p[2] != 'W') {
                 int i_line=findLine(json_parameter);
                 cmd = active_cmdtbl[i_line].cmd;
@@ -5861,7 +5873,7 @@ next_parameter:
                         cat_dev_id = dev_lookup[x].dev_id;
                         cat_dev_name = dev_lookup[x].name;
                         break;
-                      } 
+                      }
                     }
 /*
                     if (cat*2+2 < sizeof(ENUM_CAT_NR)/sizeof(*ENUM_CAT_NR)) { // only perform category boundary check if there is a higher category present
@@ -5924,7 +5936,7 @@ next_parameter:
                     if (dev_lookup[x].dev_fam == cat_dev_fam && dev_lookup[x].dev_var == cat_dev_var) {
                       cat_dev_id = dev_lookup[x].dev_id;
                       break;
-                    } 
+                    }
                   }
                 }
                 if (i_line<0 || (cmd == CMD_UNKNOWN && json_parameter < (float)BSP_INTERNAL)) {//CMD_UNKNOWN except virtual programs
@@ -5951,6 +5963,11 @@ next_parameter:
                   if (decodedTelegram.data_type == DT_ENUM && decodedTelegram.enumdescaddr)
                     printToWebClient(decodedTelegram.enumdescaddr);
                   printToWebClient("\",\r\n");
+                  printToWebClient("    \"payload\": \"");
+                  for (int i=0; i < decodedTelegram.payload_length; i++) {
+                    printFmtToWebClient("%02X", decodedTelegram.payload[i]);
+                  }
+                  printFmtToWebClient("\",\r\n");
                 }
 
                 if (p[2] != 'Q') {
@@ -6015,6 +6032,7 @@ next_parameter:
             return_to_default_destination(destAddr);
             my_dev_fam = save_my_dev_fam;
             my_dev_var = save_my_dev_var;
+            my_dev_oc = save_my_dev_oc;
             my_dev_serial = save_my_dev_serial;
           }
           bool needReboot = false;
@@ -6244,7 +6262,7 @@ next_parameter:
             case 'I': {//Parse HTTP form and implement changes
               applyingConfig();
               generateWebConfigPage(false);
-              generateConfigPage(); 
+              generateConfigPage();
               UpdateMaxDeviceList(); //Update list MAX! devices
               if (!(httpflags & HTTP_FRAG)) webPrintFooter();
               flushToWebClient();
@@ -6421,7 +6439,7 @@ next_parameter:
             printToWebClient("\r\n");
           }
 
-          SetDevId();
+          GetDevId();
           webPrintFooter();
           break;
         }
@@ -6539,6 +6557,7 @@ next_parameter:
             float end=-1;
             uint8_t save_my_dev_fam = my_dev_fam;
             uint8_t save_my_dev_var = my_dev_var;
+            uint16_t save_my_dev_oc = my_dev_oc;
             uint32_t save_my_dev_serial = my_dev_serial;
             uint8_t destAddr = bus->getBusDest();
             if (range[0]=='K') {
@@ -6599,6 +6618,7 @@ next_parameter:
               return_to_default_destination(destAddr);
               my_dev_fam = save_my_dev_fam;
               my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
               my_dev_serial = save_my_dev_serial;
             }
           }
@@ -6647,6 +6667,7 @@ next_parameter:
         uint8_t d_addr = destAddr;
         uint8_t save_my_dev_fam = my_dev_fam;
         uint8_t save_my_dev_var = my_dev_var;
+        uint16_t save_my_dev_oc = my_dev_oc;
         uint32_t save_my_dev_serial = my_dev_serial;
         for (int i=0; i < numLogValues; i++) {
           if (log_parameters[i].number > 0) {
@@ -6661,6 +6682,7 @@ next_parameter:
                 return_to_default_destination(destAddr);
                 my_dev_fam = save_my_dev_fam;
                 my_dev_var = save_my_dev_var;
+                my_dev_oc = save_my_dev_oc;
                 my_dev_serial = save_my_dev_serial;
               }
             }
@@ -6675,6 +6697,7 @@ next_parameter:
           return_to_default_destination(destAddr);
           my_dev_fam = save_my_dev_fam;
           my_dev_var = save_my_dev_var;
+          my_dev_oc = save_my_dev_oc;
           my_dev_serial = save_my_dev_serial;
 
         }
@@ -6713,7 +6736,7 @@ next_parameter:
       if (LoggingMode & CF_LOGMODE_UDP) {
         IPAddress local_ip;
         if (network_type == WLAN) {
-#if defined(ESP32) || defined(WIFISPI)
+#if defined(ESP32)
           local_ip = WiFi.localIP();
 #endif
         } else {
@@ -6725,6 +6748,7 @@ next_parameter:
       uint8_t d_addr = destAddr;
       uint8_t save_my_dev_fam = my_dev_fam;
       uint8_t save_my_dev_var = my_dev_var;
+      uint8_t save_my_dev_oc = my_dev_oc;
       uint32_t save_my_dev_serial = my_dev_serial;
       for (int i = 0; i < numLogValues; i++) {
         int outBufLen = 0;
@@ -6740,6 +6764,7 @@ next_parameter:
               return_to_default_destination(destAddr);
               my_dev_fam = save_my_dev_fam;
               my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
               my_dev_serial = save_my_dev_serial;
             }
           }
@@ -6788,6 +6813,7 @@ next_parameter:
         return_to_default_destination(destAddr);
         my_dev_fam = save_my_dev_fam;
         my_dev_var = save_my_dev_var;
+        my_dev_oc = save_my_dev_oc;
         my_dev_serial = save_my_dev_serial;
       }
     }
@@ -6808,6 +6834,7 @@ next_parameter:
       uint8_t d_addr = destAddr;
       uint8_t save_my_dev_fam = my_dev_fam;
       uint8_t save_my_dev_var = my_dev_var;
+      uint16_t save_my_dev_oc = my_dev_oc;
       uint32_t save_my_dev_serial = my_dev_serial;
       for (int i = 0; i < numAverages; i++) {
         if (avg_parameters[i].number > 0) {
@@ -6815,7 +6842,7 @@ next_parameter:
             if (avg_parameters[i].dest_addr != d_addr) {
               d_addr = avg_parameters[i].dest_addr;
               set_temp_destination(d_addr);
-              GetDevId();
+//              GetDevId();
             }
           } else {
             if (destAddr != d_addr) {
@@ -6823,6 +6850,7 @@ next_parameter:
               return_to_default_destination(destAddr);
               my_dev_fam = save_my_dev_fam;
               my_dev_var = save_my_dev_var;
+              my_dev_oc = save_my_dev_oc;
               my_dev_serial = save_my_dev_serial;
             }
           }
@@ -6844,6 +6872,7 @@ next_parameter:
         return_to_default_destination(destAddr);
         my_dev_fam = save_my_dev_fam;
         my_dev_var = save_my_dev_var;
+        my_dev_oc = save_my_dev_oc;
         my_dev_serial = save_my_dev_serial;
       }
 
@@ -6887,12 +6916,10 @@ next_parameter:
 //    SetDateTime();
 // end calculate averages
 
-#ifdef CUSTOM_COMMANDS
   {
     custom_timer = millis();
     #include "BSB_LAN_custom.h"
   }
-#endif
 
   if (enable_max_cul) {
     byte max_str_index = 0;
@@ -6917,7 +6944,7 @@ next_parameter:
         char max_id[sizeof(max_device_list[0])] = { 0 };
         bool known_addr = false;
         bool known_eeprom = false;
-  
+
         strncpy(max_hex_str, outBuf+7, 2);
         max_hex_str[2]='\0';
         uint8_t max_msg_type = (uint8_t)strtoul(max_hex_str, NULL, 16);
@@ -6942,7 +6969,7 @@ next_parameter:
           printFmtToDebug("Message from unpaired MAX device address %08lX.\r\n", max_addr);
           if (verbose == DEVELOPER_DEBUG) printFmtToDebug("Raw message: %s\r\n", outBuf);
         }
-  
+
         if (max_msg_type == 0x00) {     // Device info after pressing pairing button
           for (int x=0;x<10;x++) {
             strncpy(max_hex_str, outBuf+29+(x*2), 2);
@@ -6951,7 +6978,7 @@ next_parameter:
           }
           max_id[sizeof(max_device_list[0]) - 1] = '\0';
           printFmtToDebug("MAX device info received:\r\n%08lX\r\n%s\r\n", max_addr, max_id);
-  
+
           for (uint16_t x=0;x<MAX_CUL_DEVICES;x++) {
             if (max_devices[x] == max_addr) {
               printlnToDebug("Device already in EEPROM");
@@ -6959,13 +6986,13 @@ next_parameter:
               break;
             }
           }
-  
+
           if (!known_eeprom) {
             for (uint16_t x=0;x<MAX_CUL_DEVICES;x++) {
               if (max_devices[x] < 1) {
                 strcpy(max_device_list[x], max_id);
                 max_devices[x] = max_addr;
-  
+
                 writeToEEPROM(CF_MAX_DEVICES);
                 writeToEEPROM(CF_MAX_DEVADDR);
                 printlnToDebug("Device stored in EEPROM");
@@ -6974,19 +7001,19 @@ next_parameter:
             }
           }
         }
-  
+
         if (max_msg_type == 0x02 && known_addr == true) {
           strncpy(max_hex_str, outBuf+27, 2);
           max_hex_str[2]='\0';
           max_valve[max_idx] = (uint32_t)strtoul(max_hex_str,NULL,16);
           printFmtToDebug("Valve position from thermostat received:\r\n%08lX\r\n%lu\r\n", max_addr, max_valve[max_idx]);
         }
-  
+
         if ((max_msg_type == 0x42 || max_msg_type == 0x60) && known_addr == true) {   // Temperature from thermostats
           uint8_t temp_str_offset;
           uint32_t max_temp_status;
           uint8_t str_len;
-  
+
           switch (max_msg_len) {
             case 0x0C: temp_str_offset = 23; str_len = 4; break;
             case 0x0E: temp_str_offset = 25; str_len = 8; break;
@@ -7005,7 +7032,7 @@ next_parameter:
             max_dst_temp[max_idx] = (max_temp_status & 0xFF0000) >> 16;
             max_valve[max_idx] = (max_temp_status & 0xFF000000) >> 24;
           }
-  
+
           printlnToDebug("MAX temperature message received:");
           printFmtToDebug("%08lX\r\n%f\r\n%f\r\n%lu\r\n", max_addr, ((float)max_cur_temp[max_idx] / 10), (float)(max_dst_temp[max_idx] / 2), max_valve[max_idx]);
         }
@@ -7045,11 +7072,10 @@ next_parameter:
 #endif
 
   if (millis() - maintenance_timer > 60000) {
-    printFmtToDebug("%lu Ping!\r\n", millis());
     maintenance_timer = millis();
     //If device family and type was not detected at startup we will try recognize it every minute
     if (bus->getBusType() != BUS_PPS && !my_dev_fam) {
-      SetDevId();
+      GetDevId();
     }
 #if defined(ESP32)
     struct tm now;
@@ -7070,7 +7096,7 @@ next_parameter:
           }
         }
       }
-  
+
       if ((WiFi.status() != WL_CONNECTED || not_preferred_bssid == true) && localAP == false) {
         printFmtToDebug("Reconnecting to WiFi...\r\n");
         scanAndConnectToStrongestNetwork();
@@ -7150,7 +7176,7 @@ void printWifiStatus()
     // print your WiFi shield's IP address
     IPAddress t = WiFi.localIP();
     printFmtToDebug("IP Address: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
-  
+
     // print the received signal strength
     long rssi = WiFi.RSSI();
     printFmtToDebug("Signal strength (RSSI): %l dBm\r\n", rssi);
@@ -7276,14 +7302,13 @@ void startLoggingDevice() {
 void createTemporaryAP () {
 #if defined (ESP32)
   esp_wifi_disconnect(); // W.Bra. 04.03.23 mandatory because of interrupts of AP; replaces WiFi.disconnect(x, y) - no arguments necessary
-  printlnToDebug("Setting up AP 'BSB-LAN'");
-  WiFi.softAP("BSB-LAN", "BSB-LPB-PPS-LAN");
+  printFmtToDebug("Setting up fallback access point '%s'", wifi_ap_ssid);
+  WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
   IPAddress t = WiFi.softAPIP();
   localAP = true;
   localAPtimeout = millis();
   esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20); // W.Bra. 23.03.23 HT20
-  printFmtToDebug("IP address of BSB-LAN: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
-  printlnToDebug("Connect to access point 'BSB-LAN' with password 'BSB-LPB-PPS-LAN' and open the IP address.");
+  printFmtToDebug("IP address of BSB-LAN access point: %d.%d.%d.%d\r\n", t[0], t[1], t[2], t[3]);
 #endif
 }
 
@@ -7319,6 +7344,7 @@ for (uint i=0; i<sizeof(dev_lookup)/sizeof(dev_lookup[0]); i++) {
   dev_lookup[i].dev_fam = 0xFF;
   dev_lookup[i].dev_var = 0xFF;
   dev_lookup[i].dev_id = 0xFF;
+  dev_lookup[i].dev_oc = 0xFF;
   dev_lookup[i].name[0] = '\0';
 }
 
@@ -7330,6 +7356,9 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   Serial2.begin(115200, SERIAL_8N1); // hardware serial interface #2
 #else
   SerialOutput = &Serial;
+  #if (defined(ARDUINO_ESP32_POE) || defined(ARDUINO_ESP32_POE_ISO) || defined(ARDUINO_ESP32_EVB))
+  pinMode(3, INPUT);  // Workaround for underpowered CH340T on PoE or barrel-plug-powered Olimex, see https://github.com/fredlcore/BSB-LAN/issues/715#issuecomment-2717685796
+  #endif
   Serial.begin(115200); // hardware serial interface #0
 #endif
 
@@ -7626,7 +7655,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     int l = findLine(15000+i);
     if (l==-1) continue;
     // fill bitwise array with flags
-    uint16_t flags=active_cmdtbl[l].flags;
+    uint32_t flags=active_cmdtbl[l].flags;
     if ((flags & FL_EEPROM) == FL_EEPROM) {
       allow_write_pps_values[i / 8] |= (1 << (i % 8));
       if (active_cmdtbl[l].type == VT_TIMEPROG) {      // On PPS bus, VT_TIMEPROG occupies six "slots" in pps_values[], five of which are "invisible", so we have to give these the same writing rights as well
@@ -7678,23 +7707,6 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   WiFi.onEvent(netEvent);
 #endif
 
-#ifdef WIFISPI
-  WiFi.init(WIFI_SPI_SS_PIN);     // SS signal is on Due pin 12
-
-  // check for the presence of the shield
-  if (WiFi.status() == WL_NO_SHIELD) {
-    printToDebug("WiFi shield not present. Cannot continue.\r\n");
-    // don't continue
-    while (true);
-  }
-
-  if (!WiFi.checkProtocolVersion()) {
-    printToDebug("Protocol version mismatch. Please upgrade the WiFiSpiESP firmware of the ESP.\r\n");
-    // don't continue:
-    while (true);
-  }
-#endif
-
   // setup IP addresses
   if (!useDHCP && ip_addr[0]) {
     IPAddress ip(ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3]);
@@ -7721,8 +7733,6 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     } else {
 #if defined(ESP32)
       WiFi.config(ip, gateway, subnet, dnsserver);
-#elif defined(WIFISPI)
-      WiFi.config(ip, dnsserver, gateway, subnet);
 #endif
     }
   } else {
@@ -7753,7 +7763,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     SerialOutput->print(" gateway: ");
     SerialOutput->println(Ethernet.gatewayIP());
   } else {
-#if defined(ESP32) || defined(WIFISPI)
+#if defined(ESP32)
     unsigned long timeout;
     #ifdef ESP32
     // Workaround for problems connecting to wireless network on some ESP32, see here: https://github.com/espressif/arduino-esp32/issues/2501#issuecomment-731618196
@@ -7761,7 +7771,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     WiFi.mode(WIFI_STA); //init wifi mode
     if (mDNS_hostname[0]) WiFi.setHostname(mDNS_hostname);
     esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);  // W.Bra. 23.03.23 HT20 - reduce bandwidth from 40 to 20 MHz. In 2.4MHz networks, this will increase speed and stability most of the time, or will at worst result in a roughly 10% decrease in transmission speed.
-  
+
     printToDebug("Setting up WiFi interface");
     WiFi.begin();
     timeout = millis();
@@ -7772,7 +7782,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     writelnToDebug();
     scanAndConnectToStrongestNetwork();
     #endif
-  
+
     // attempt to connect to WiFi network
     printFmtToDebug("Attempting to connect to WPA SSID: %s", wifi_ssid);
     timeout = millis();
@@ -7788,7 +7798,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
     // you're connected now, so print out the data
       printToDebug("\r\nYou're connected to the network:\r\n");
     #if defined(__arm__) || defined(ESP32)
-      WiFi.macAddress(mac);  // overwrite mac[] with actual MAC address of ESP32 or WiFiSpi connected ESP
+      WiFi.macAddress(mac);  // overwrite mac[] with actual MAC address of ESP32
     #endif
     #if defined(ESP32)
       printWifiStatus();
@@ -7818,7 +7828,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   if (bus->getBusType() != BUS_PPS) {
 
 // receive device family (Gerätefamilie) and device variant (Gerätevariant) from heating system
-    SetDevId();
+    GetDevId();
     if (my_dev_fam != 0) {
       //decoration: double blink by LED to signal succesful detection of device family. effectively wait for a second
       internalLEDBlinking(250, 2);
@@ -7958,7 +7968,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
           if (isnan(avgValues_Old[i])) {
             avgValues_Old[i] = -9999;
           }
-  
+
           c = avgfile.read();
           x = 0;
           while (avgfile.available() && c != '\n' && x < sizeof(num)-1) {
@@ -7971,7 +7981,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
           num[x]='\0';
           avgValues_Current[i] = atof(num);
         }
-  
+
         c = avgfile.read();
         x = 0;
         while (avgfile.available() && c != '\n' && x < sizeof(num)-1) {
@@ -7999,19 +8009,23 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   }
 
   if(mDNS_hostname[0]) {
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 #if defined(ESP32)
+    char instance_name[35];
+    snprintf(instance_name, sizeof(instance_name), "BSB-LAN %s/%lu", dev_lookup[0].name, dev_lookup[0].dev_serial);
     MDNS.begin(mDNS_hostname);
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("BSB-LAN web service._http", "tcp", 80);
+    MDNS.setInstanceName(instance_name);
+    MDNS.addService("http", "tcp", HTTPPort);
+    MDNS.addServiceTxt("http", "tcp", "description", "BSB-LAN web service");
+    MDNS.addServiceTxt("http", "tcp", "mac", (const char*)macStr);
 #else
-    if (network_type==WLAN) {
-#if defined(WIFISPI)
-      mdns.begin(WiFi.localIP(), mDNS_hostname);
-#endif
-    } else {
-      mdns.begin(Ethernet.localIP(), mDNS_hostname);
-    }
-    mdns.addServiceRecord("BSB-LAN web service._http", HTTPPort, MDNSServiceTCP);
+    char instance_name[35];
+    snprintf(instance_name, sizeof(instance_name), "BSB-LAN %s/%lu._http", dev_lookup[0].name, dev_lookup[0].dev_serial);
+    mdns.begin(Ethernet.localIP(), mDNS_hostname);
+    char service_txt[60];
+    snprintf(service_txt, sizeof(service_txt), "%c%s%c%s%s", 0x1F, "description=BSB-LAN web service", 0x15, "mac=", macStr);
+    mdns.addServiceRecord(instance_name, HTTPPort, MDNSServiceTCP, service_txt);
 #endif
     printFmtToDebug("Starting MDNS service with hostname %s\r\n", mDNS_hostname);
   }
@@ -8021,9 +8035,7 @@ active_cmdtbl_size = sizeof(cmdtbl)/sizeof(cmdtbl[0]);
   init_ota_update();
 #endif
 
-#ifdef CUSTOM_COMMANDS
 #include "BSB_LAN_custom_setup.h"
-#endif
 
 #if !defined(ESP32)
   FsDateTime::setCallback(dateTime);

@@ -2,10 +2,11 @@
 
 Dies ist eine Liste von Modellen verschiedener Hersteller, die in der Vergangenheit mit BSB-LAN getestet wurden. Bitte beachte, dass die Hersteller jederzeit die technischen Spezifikationen, einschließlich des Controllers, ändern können, ohne den Modellnamen (oder nur einen sehr kleinen Teil davon) zu ändern. Wenn wir von solchen Änderungen erfahren, werden wir sie hier auflisten, aber offensichtlich ist diese Liste in beide Richtungen nicht vollständig. Also überprüfe in jedem Fall selbst, ob deine Heizung die notwendigen Anschlüsse für die Verwendung von BSB-LAN hat.
 
-- Brötje: BBK, BBS, BGB, BLW (**siehe Ausnahmen unten!**), BMK, BMR, BOB, BSK, BSW, Eurocontrol, ISR, LogoBloc, SGB, SOB, SPK, WBC, WBS, WGB (**siehe Ausnahmen unten!**), WMC, WMS, WOB
-- **Nicht funktionierende Brötje-Modelle: BOK, BLW Mono, BLW Neo, BLW Split, WGB-K, WGB 14.1/22.1/28.1/38.1, WHC, WHS, WLC, WLS und alle weiteren Modelle mit IWR Regelung** 
+- Brötje: BBK, BBS, BGB, BLW (**siehe Ausnahmen unten!**), BMK, BMR, BOB, BSK, BSW, Eurocontrol, ISR, LogoBloc, SGB, SOB, SPK, WBC (**siehe Ausnahmen unten!**), WBS (**siehe Ausnahmen unten!**), WGB (**siehe Ausnahmen unten!**), WMC, WMS, WOB
+- **Nicht funktionierende Brötje-Modelle: BOK, BLW Mono, BLW Neo, BLW Split, WBC 22.1/28.1, WBC 14.1/22.1, WGB-K 22.1/28.1, WGB 14.1/22.1/28.1/38.1, WHC, WHS, WLC, WLS und alle weiteren Modelle mit IWR Regelung** 
 - Bösch: Wärmepumpen mit RVS-Controllertyp
 - Elco: Aerotop (**nicht Aerotop Mono!**), Aquatop, Rendamax, Straton, Thision (**nicht Thision Mini!**), Thision S, Thision S Plus, Trigon S Plus
+- Alarko: Aldens WM/WS
 - ATAG: QR
 - Atlantic: Alféa, Axeo, Excellia, Extensa, Hynea Hybrid Duo Gaz, Navistem, Perfinox, Varmax
 - Austria Email: LWP, LWPK
@@ -18,16 +19,20 @@ Dies ist eine Liste von Modellen verschiedener Hersteller, die in der Vergangenh
 - Deville: 9942, 9981
 - Eco: AiWA, AW, BW, DW, heatLite, Star, TBW, WW, WWi, TWW
 - Ecostar: Ecodense WT-S 45
+- Etna: II GWS
 - EVI Heat: Combi-7
 - Fernwärme: RVD230
 - Fröling: Rendagas Plus
 - Fujitsu Waterstage: Comfort, Duo, WOHA, WSHA, WSYA, WSYK, WSYP
+- Gebwell: T2
 - Geminox: Thrs
 - General: (aka Fujitsu Waterstage) WC13F / WOC13RIYF / WGHA 100DG
-- Gruenenwald: Greenheat
+- Gorenje: Aerogor Compact, Aerogor Compact EVI, Aerogor ECO Inverter 10 A, Aerogor Split AW, Aerogor Split HD, Aerogor Split HD EVI, Aquagor, Aquagor EVI, Geogor All-In-One, Terragor, Terragor EVI
+- Grünenwald: Greenheat
 - GS: UnoTec
 - Hansa: SND
 - Herz: Commotherm 5 DeLuxe
+- Ideal: Logic Air Heat Pump
 - Interdomo: Domostar GBK 25H/SH
 - MAN/MHG: Ecostar 200
 - MHG: ecoWP Xe, Procon E
@@ -37,9 +42,12 @@ Dies ist eine Liste von Modellen verschiedener Hersteller, die in der Vergangenh
 - Sieger: TG11
 - Šildymo Technologijų Centras (ŠTC): STC9
 - Sixmadun: TG11BE
+- Smartheat: UI400
 - SSP: Proburner
+- Strebel: S-ASX
 - Sunex: Nexus
 - Termomax: Termo ÖV
+- Thercon: Therma Silent Coax Single, THERMA Silent Coax Combi 300/500
 - Thermics: Energie
 - Thermital: TBox Clima TOP
 - Tifell: Biofell

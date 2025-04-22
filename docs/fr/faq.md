@@ -8,10 +8,18 @@ Les mises à jour n'affectent jamais aucun paramètre du système de chauffage.
 
 ---
 
-## Mon chauffage a une connexion OpenTherm/eBus/L-Bus/R-Bus, puis-je utiliser BSB-LAN ?
-- Non, ces contrôleurs ne sont pas compatibles avec BSB-LAN. Ne tentez **pas** de connecter l'adaptateur à votre système de chauffage !
+## Mon chauffage a une connexion OpenTherm/eBus/BridgeNet/L-Bus/R-Bus, puis-je utiliser BSB-LAN ?
+- Non, ces contrôleurs ne sont pas compatibles avec BSB-LAN. **Ne tiens pas** de connecter l'adaptateur à ton système de chauffage !  
+Si tu possèdes l'un de ces systèmes de chauffage, il existe d'autres projets pour le [R-Bus](https://github.com/pepijndevos/R-Bus) de Remeha (également utilisé dans les systèmes de chauffage Brötje plus récents), le [bus BridgeNet](https://github.com/wrongisthenewright/ebusd-configuration-ariston-bridgenet) (en fait une sorte de [eBus](https://adapter.ebusd.eu/) utilisé par les systèmes de chauffage Elco/Ariston/Chaffoteaux) et [OpenTherm](https://otgw.tclcode.com/index.html).  
+Ces projets **ne sont pas** liés au BSB-LAN de quelque manière que ce soit, et **aucun support** ne peut être fourni ici.
+
+---
+
+## Il me manque le paramètre XYZ, un autre utilisateur ayant le même système de chauffage a ce paramètre !
+- C'est possible, mais avoir le même système de chauffage ne signifie pas forcément que le contrôleur est identique, et même si c'est le cas, différentes versions du firmware peuvent entraîner des dizaines de paramètres différents. Avec la liste des paramètres spécifiques à l'appareil, le contrôleur nous indique quels paramètres il prend en charge. BSB-LAN ne peut offrir que cela, ni plus ni moins.  
+Si tu veux quand même ajouter des paramètres toi-même, par exemple à partir de la liste de paramètres créée par les utilisateurs que nous utilisions jusqu'à la version 2.2, tu peux trouver des informations sur ce processus [ici dans le wiki](https://github.com/fredlcore/BSB-LAN/wiki/Adding-selected-parameters-from-release-version-2.2). Mais attention : nous n’offrons aucun support à ce sujet !
 
 ---
 
 ## Il me manque la fonction *XYZ*
-- BSB-LAN offre la possibilité de créer ses propres fonctions à l'aide des fichiers `BSB_LAN_custom_global.h`, `BSB_LAN_custom_setup.h` et `BSB_LAN_custom.h`. Pour plus de détails et d'exemples, veuillez consulter le dossier `custom_functions` dans le repo Github. N'hésitez pas à partager vos solutions avec nous !
+- BSB-LAN offre la possibilité de créer ses propres fonctions à l'aide des fichiers `BSB_LAN_custom_global.h`, `BSB_LAN_custom_setup.h` et `BSB_LAN_custom.h`. Pour plus de détails et d'exemples, veuillez consulter le dossier `custom_functions` dans le repo Github. N'hésite pas à partager tes solutions avec nous !

@@ -14,7 +14,7 @@ Die Installation von BSB-LAN besteht aus drei Schritten:
     1. `BSB_LAN_custom_defs.h.default` in `BSB_LAN_custom_defs.h`
     1. `BSB_LAN_config.h.default` in `BSB_LAN_config.h`
 1. Lade die Arduino IDE für dein System herunter [Download](https://www.arduino.cc/en/software) und installiere sie.
-1. Verbinde deinen Mikrocontroller (ESP32 oder Arduino Due) mit deinem Computer und starte die Arduino IDE.
+1. Verbinde deinen Mikrocontroller (ESP32 oder Arduino Due) mit deinem Computer und starte die Arduino IDE. Wenn der Microcontroller nicht als USB-Gerät erkannt wird, musst Du ggf. noch die USB-Treiber des Herstellers installieren.
 1. Gehe zu ***Tools/Board/Board Manager*** und stelle sicher, dass das Framework für deine Platine installiert ist ("esp32 by Espressif Systems" für ESP32-Mikrocontroller, "Arduino SAM Boards (32-bits ARM Cortex-M3) by Arduino" für Arduino Due-Mikrocontroller)
 1. Gehe wieder zu ***Tools/Board*** und wähle deinen Mikrocontroller aus:
     1. *ESP32 Dev Module* für den Joy-It ESP32 NodeMCU.
@@ -26,7 +26,7 @@ Die Installation von BSB-LAN besteht aus drei Schritten:
 1. [](){#SPIFFS}Für ESP32-basierte Mikrocontroller, gehe wieder zu ***Tools/Board*** und wähle "Minimal SPIFFS" als Partitionsschema aus (**verwechsle dies nicht mit dem ähnlichen "Minimal"-Partitionsschema**, das anders ist und in unserem Fall nicht funktioniert). **Wenn du das falsche Partitionsschema auswählst, passt die Firmware nicht auf den ESP32!**
 1. Gehe zu ***File/Open***, navigiere zum BSB_LAN-Ordner und doppelklicke auf `BSB_LAN.ino`. Das Projekt wird geöffnet.
 1. Du kannst jetzt mit der [Konfiguration](configure.md) von BSB-LAN fortfahren.
-1. Wenn du mit der Konfiguration fertig bist, gehe zu ***Sketch/Upload*** und lade die BSB-LAN-Software auf den Mikrocontroller.
+1. Wenn du mit der Konfiguration fertig bist, gehe zu ***Sketch/Upload*** und lade die BSB-LAN-Software auf den Mikrocontroller. Bei ESP32 Microcontrollern ist die Meldung "Hard resetting via RTS pin..." **keine** Fehlermeldung, sondern bedeutet, dass der Upload erfolgreich war und der ESP32 nun neu gestartet wird.
 1. Der gleiche Prozess ist bei jedem Update zu wiederholen, einschließlich des Einspielens der gerätespezifischen Parameterliste.  
 
 ---

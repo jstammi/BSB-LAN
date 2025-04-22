@@ -6,6 +6,15 @@
 
 // Upon first installation, rename this file from BSB_lan_config.h.default to BSB_lan_config.h and adjust settings accordingly
 
+/* Optionally, if one intends to commit the settings to git, too, move all customizations containing data considered to
+ * remain private to a new file named "BSB_LAN_config_private.h" and un-comment the line below:
+*/
+//#include "BSB_LAN_config_private.h"
+/* !!! Please be aware, that any information committed and pushed to a server, must be regarded as leaked.           !!!
+ * !!! It may be possible to remove it from the repo again (with a lot of effort) - but it remains out of control as !!!
+ * !!! others may have cloned it meanwhile. In their copy this information is contained then still.                  !!!
+*/
+
 /* Select language; so far German is the most complete, with English following.
  * Available languages are: Czech (CS), German (DE), Danish (DA), English (EN), Spanish (ES), Finnish (FI),
  * French (FR), Greek (EL), Hungarian (HU), Italian (IT), Dutch (NL), Polish (PL), Russian (RU), Swedish (SV),
@@ -27,7 +36,7 @@ byte UseEEPROM = 1;
 /*
  * Configuration of the network settings
 */
-uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi. Arduino users using WiFiSpi have to activate the definement below as well.
+uint8_t network_type = LAN;             // Set to LAN (0) when using Ethernet connection. Set to WLAN (1) when using WiFi.
 uint16_t HTTPPort = 80;
 bool useDHCP = true;                    // Set to false if you want to use a fixed IP.
 byte ip_addr[4] = {192,168,178,88};     // Please note the commas instead of dots!!!  Set useDHCP (above) to false if you want to use a fixed IP.
@@ -39,8 +48,9 @@ char wifi_ssid[32] = "YourWiFiNetwork"; // enter your WiFi network name (SSID) h
 char wifi_pass[64] = "YourWiFiPassword";// enter your WiFi password here
 uint8_t bssid[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // enter specific BSSID address here to ensure connecting to a specific access point. Set to all zeros under normal circumstances.
 
-//#define WIFISPI                         // Activate this on the Arduino to enable WiFi via WiFiSpi. DO NOT enable this on an ESP32.
-#define WIFI_SPI_SS_PIN 12              // defines SPI-SS pin for Arduino-ESP8266 connection
+// for ESP32 only - on failing to connect to above wifi, a fallback one is spawned instead
+char wifi_ap_ssid[32] = "BSB-LAN";        // enter your fallback WiFi AP network name (SSID) here
+char wifi_ap_pass[64] = "BSB-LPB-PPS-LAN";// enter your fallback WiFi AP password here
 
 char mDNS_hostname[32] = "BSB-LAN";     // Advertises the hostname in the local network. Set this to an empty string if you don't want your device to be found under this name in your network.
 
@@ -177,7 +187,7 @@ char MQTTDeviceID[32] = "BSB-LAN";
 // Specify the topic configured at HomeAssistant for auto discovery, by default "homeassistant"
 char MQTTTopicHADiscovery[65] = "homeassistant";
 
-// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 -  send values to UDP. Can be any sum of these values.
+// Logging mode: 0 - disabled, 1 - write values to SD card, 2 - write 24h averages to SD card, 4 - send values to MQTT, 8 - send only logged parameter values to MQTT broker, 16 -  send values to UDP. Can be any sum of these values.
 byte LoggingMode = 0; //CF_LOGMODE_SD_CARD | CF_LOGMODE_24AVG | CF_LOGMODE_MQTT | CF_LOGMODE_MQTT_ONLY_LOG_PARAMS | CF_LOGMODE_UDP
 
 // Create 24h averages from these parameters and save data into averages.txt on SD-card.
@@ -242,9 +252,6 @@ char max_device_list[20][11] = {               // list of MAX! wall/heating ther
   "KEQ0505080"
 };
 
-// include commands from BSB_lan_custom.h to be executed at the end of each main loop
-//#define CUSTOM_COMMANDS
-
 /*
  * Check for new versions when accessing BSB-LAN's main page.
  * Doing so will poll the most recent version number from the BSB-LAN server.
@@ -259,14 +266,14 @@ bool enable_version_check = false;
 // Enable ESP32 over-the-air updates.
 // Pro: You don't need to physically connect your PC to the ESP32 in order to update BSB-LAN.
 // Contra: Someone who has access to your network and finds out about BSB-LAN's username and password can install their own software on the ESP32.
-boolean enable_ota_update = false;
+bool enable_ota_update = false;
 
 // Reduce clock speed of ESP32 from 240 MHz to 80MHz, saving ca. 20% energy.
 // Works well when connecting via LAN, but since it reduces WiFi range and log file display times when using WiFi, it is disabled by default.
-boolean esp32_save_energy = false;
+bool esp32_save_energy = false;
 
 // "External" web server. Read files from SD-card / flash memory. Only static content: html, js, css, jpg, etc.
-boolean webserver = false;
+bool webserver = false;
 
 // Debug options
 byte debug_mode = 1;  // Debug mode: 0 - disabled, 1 - send debug messages to serial interface, 2 - send debug messages to telnet client

@@ -202,7 +202,7 @@ bool mqtt_connect() {
       return false;
     }
 
-    char* tempstr = (char*)malloc(sizeof(mqtt_broker_addr));  // make a copy of mqtt_broker_addr for destructive strtok operation
+    char tempstr[sizeof(mqtt_broker_addr)];  // make a copy of mqtt_broker_addr for destructive strtok operation
     strcpy(tempstr, mqtt_broker_addr);
     uint16_t mqtt_port = 1883;
     char* mqtt_host = strtok(tempstr,":");  // hostname is before an optional colon that separates the port
@@ -210,7 +210,6 @@ bool mqtt_connect() {
     if (token != 0) {
       mqtt_port = atoi(token);
     }
-    free(tempstr);
 
     char* MQTTUser = NULL;
     if(MQTTUsername[0]) {
@@ -231,7 +230,7 @@ bool mqtt_connect() {
     } else {
       printlnToDebug("Connected to MQTT broker, updating will topic");
       mqtt_reconnect_timer = 0;
-      char tempTopic[67];
+      char tempTopic[sizeof(MQTTTopicPrefix)+2];
       strcpy(tempTopic, MQTTTopicPrefix);
       strcat(tempTopic, "/#");
       MQTTPubSubClient->subscribe(tempTopic, 1);   //Luposoft: set the topic listen to
@@ -337,7 +336,7 @@ void mqtt_callback(char* topic, byte* passed_payload, unsigned int length) {
       while (token != NULL) {
         while (token[0] == ' ') token++;
         if (token[0] == '/') {
-          if (sscanf(token, "/%" PRId16 "/%*d/%g",&param.dest_addr, &param.number) != 2) {
+          if (sscanf(token, "/%hd/%*d/%g",&param.dest_addr, &param.number) != 2) {
             printFmtToDebug("Invalid topic structure, discarding...\r\n");
             break;
           }
@@ -417,7 +416,7 @@ void mqtt_callback(char* topic, byte* passed_payload, unsigned int length) {
 
 }
 
-boolean mqtt_send_discovery(boolean create=true) {
+bool mqtt_send_discovery(bool create=true) {
 //  uint8_t destAddr = bus->getBusDest();
   char MQTTPayload[2048] = "";
   char MQTTTopic[80] = "";
@@ -436,6 +435,15 @@ boolean mqtt_send_discovery(boolean create=true) {
     if (bus->getBusType() != BUS_PPS && line >= 15000 && line <= 16000) continue;
     if (line == 19999) continue;    // skip entry for unknown parameter
     if (line > 20999) break;
+    if (LoggingMode & CF_LOGMODE_MQTT_ONLY_LOG_PARAMS) {
+      boolean isLogged = false;
+      for (int i=0;i<numLogValues;i++) {
+        if (log_parameters[i].number == line && (log_parameters[i].dest_addr == bus->getBusDest() || (log_parameters[i].dest_addr == -1 && bus->getBusDest() ==  dest_address))) {
+          isLogged = true;
+        }
+      }
+      if (!isLogged) continue;
+    }
     do {
       i=findLine(line);
       if (i>=0) {
@@ -473,9 +481,10 @@ boolean mqtt_send_discovery(boolean create=true) {
             appendStringBuffer(&sb_topic, "sensor/");
             if (decodedTelegram.unit[0]) {
               appendStringBuffer(&sb_payload, "\"unit_of_measurement\":\"%s\",", decodedTelegram.unit);
-              if (strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
-                appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
-              }
+            }
+            if (decodedTelegram.data_type == DT_VALS && strcmp(decodedTelegram.unit, U_HOUR) && strcmp(decodedTelegram.unit, U_KWH)) {    // do not add state_class for potentially cumulative parameters
+              appendStringBuffer(&sb_payload, "\"state_class\":\"measurement\",");
+              appendStringBuffer(&sb_payload, "\"value_template\": \"{%% if value | regex_match('^[-]+$') %%}None{%% else %%}{{ value }}{%% endif %%}\",");
             }
             sensor_type = MQTT_SENSOR;
           }
