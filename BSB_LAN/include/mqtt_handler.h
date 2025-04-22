@@ -1,3 +1,5 @@
+#include "mqtt_handler_custom.h"
+
 char *build_pvalstr(bool extended);
 unsigned long mqtt_reconnect_timer;
 
@@ -401,6 +403,7 @@ void mqtt_callback(char* topic, byte* passed_payload, unsigned int length) {
   } else { //command to heater
     printFmtToDebug("%s%g!%d=%s \r\n", (setmode==1?"S":"I"), param.number, param.dest_addr, payload);
     set(param.number,payload,setmode);  //command to heater
+    on_set(param.number,payload,setmode);
   }
   query(param.number);
   if ((LoggingMode & CF_LOGMODE_MQTT) && (LoggingMode & CF_LOGMODE_MQTT_ONLY_LOG_PARAMS)) {   // If only log parameters are sent to MQTT broker, we need an exemption here if /poll is used via MQTT. Otherwise, query() will publish the parameter anyway.
