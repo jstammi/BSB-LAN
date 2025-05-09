@@ -173,7 +173,7 @@ uint8_t max_temp_mode = 0x01;        // Temperature mode: 0x00 - auto, 0x01 - ma
 #include "BSB_LAN_config.h"
 #include "BSB_LAN_defs.h"
 
-#define REQUIRED_CONFIG_VERSION 39
+#define REQUIRED_CONFIG_VERSION 41
 #if CONFIG_VERSION < REQUIRED_CONFIG_VERSION
   #error "Your BSB_LAN_config.h is not up to date! Please use the most recent BSB_LAN_config.h.default, rename it to BSB_LAN_config.h and make the necessary changes to this new one."
 #endif
@@ -3557,45 +3557,50 @@ void query_printHTML() {
       }
 */
 
-    const char fieldDelimiter[] = "</td><td>";
-      printToWebClient(fieldDelimiter);
-      if (decodedTelegram.msg_type != TYPE_ERR && decodedTelegram.type != VT_UNKNOWN) {
-        if (decodedTelegram.data_type == DT_ENUM || decodedTelegram.data_type == DT_BITS) {
-          printToWebClient("<select ");
-          if (decodedTelegram.data_type == DT_BITS) {
-            printToWebClient("multiple ");
-          }
-          printFmtToWebClient("id='value%g-%d'>\r\n", decodedTelegram.prognr, bus->getBusDest());
-          uint16_t value = 0;
-          if (decodedTelegram.data_type == DT_BITS) {
-            for (int i = 0; i < 8; i++) {
-              if (decodedTelegram.value[i] == '1') value+=1<<(7-i);
-            }
-          } else {
-            value = strtod(decodedTelegram.value, NULL);
-            if (decodedTelegram.readwrite == FL_WONLY) value = 65535;
-          }
-          listEnumValues(decodedTelegram.enumstr, decodedTelegram.enumstr_len, STR_OPTION_VALUE, "'>", STR_SELECTED, STR_CLOSE_OPTION, NULL, value,
-            decodedTelegram.data_type == DT_BITS?(PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST|PRINT_ENUM_AS_DT_BITS):
-            (PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST));
-          printToWebClient("</select>");
-          printToWebClient(fieldDelimiter);
-          if (decodedTelegram.readwrite != FL_RONLY) { //not "read only"
-            printToWebClient("<input type=button value='Set' onclick=\"set");
-            if (decodedTelegram.type == VT_BIT) {
-              printToWebClient("bit");
-            }
-            printFmtToWebClient("(%g,%d)\">", decodedTelegram.prognr, bus->getBusDest());
-          }
-        } else {
-          printFmtToWebClient("<input type=text id='value%g-%d' VALUE='%s'>", decodedTelegram.prognr, bus->getBusDest(), decodedTelegram.value);
-          printToWebClient(fieldDelimiter);
-          if (decodedTelegram.readwrite != FL_RONLY) { //not "read only"
-            printFmtToWebClient("<input type=button value='Set' onclick=\"set(%g,%d)\">", decodedTelegram.prognr, bus->getBusDest());
-          }
-        }
+  const char fieldDelimiter[] = "</td><td>";
+  printToWebClient(fieldDelimiter);
+  if (decodedTelegram.msg_type != TYPE_ERR && decodedTelegram.type != VT_UNKNOWN) {
+    if (decodedTelegram.data_type == DT_ENUM || decodedTelegram.data_type == DT_BITS) {
+      printToWebClient("<select ");
+      if (decodedTelegram.data_type == DT_BITS) {
+        printToWebClient("multiple ");
       }
-      printToWebClient("</td></tr>\r\n");
+      printFmtToWebClient("id='value%g-%d'>\r\n", decodedTelegram.prognr, bus->getBusDest());
+      uint16_t value = 0;
+      if (decodedTelegram.data_type == DT_BITS) {
+        for (int i = 0; i < 8; i++) {
+          if (decodedTelegram.value[i] == '1') value+=1<<(7-i);
+        }
+      } else {
+        value = strtod(decodedTelegram.value, NULL);
+        if (decodedTelegram.readwrite == FL_WONLY) value = 65535;
+      }
+      listEnumValues(decodedTelegram.enumstr, decodedTelegram.enumstr_len, STR_OPTION_VALUE, "'>", STR_SELECTED, STR_CLOSE_OPTION, NULL, value,
+        decodedTelegram.data_type == DT_BITS?(PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST|PRINT_ENUM_AS_DT_BITS):
+        (PRINT_VALUE|PRINT_DESCRIPTION|PRINT_VALUE_FIRST));
+      printToWebClient("</select>");
+      printToWebClient(fieldDelimiter);
+      if (decodedTelegram.readwrite != FL_RONLY) { //not "read only"
+        printToWebClient("<input type=button value='Set' onclick=\"set");
+        if (decodedTelegram.type == VT_BIT) {
+          printToWebClient("bit");
+        }
+        printFmtToWebClient("(%g,%d)\">", decodedTelegram.prognr, bus->getBusDest());
+      }
+    } else {
+      // If replacement for '---' is in place and value is disabled, then return to '---' for input field to make sure 'Set' will send '---' instead of user defined value:
+      if (!strncmp(decodedTelegram.value, replaceDisabled, strlen(replaceDisabled)) && decodedTelegram.data_type == DT_VALS) {
+        undefinedValueToBuffer(decodedTelegram.value);
+      }
+
+      printFmtToWebClient("<input type=text id='value%g-%d' VALUE='%s'>", decodedTelegram.prognr, bus->getBusDest(), decodedTelegram.value);
+      printToWebClient(fieldDelimiter);
+      if (decodedTelegram.readwrite != FL_RONLY) { //not "read only"
+        printFmtToWebClient("<input type=button value='Set' onclick=\"set(%g,%d)\">", decodedTelegram.prognr, bus->getBusDest());
+      }
+    }
+  }
+  printToWebClient("</td></tr>\r\n");
 
 // TODO: check at least for data length (only used for temperature values)
 /*
@@ -5328,14 +5333,31 @@ void loop() {
                 esp_task_wdt_reset();
 #endif
                 timeout = millis() + 6000;
-                while (millis() < timeout && (msg[5+bus->offset] << 8 | msg[6+bus->offset]) != IA1_counter) {
-                  while (bus->Send(TYPE_IQ1, IA1_counter, msg, tx_msg) != BUS_OK && (millis() < timeout)) {
+                bool valid_response = false;
+                while (millis() < timeout && !valid_response) {
+                  if (bus->Send(TYPE_IQ1, IA1_counter, msg, tx_msg) != BUS_OK) {
                     printToWebClient("Didn't receive matching telegram, resending...\r\n");
                     delay(500);
+                    continue;
                   }
-                  if ((msg[5+bus->offset] << 8 | msg[6+bus->offset]) != IA1_counter) {
-                    printToWebClient("Didn't receive requested line...\r\n");
+
+                  uint16_t received_counter = (msg[5 + bus->offset] << 8) | msg[6 + bus->offset];
+                  int length = msg[bus->getLen_idx()] + bus->getBusType();
+
+                  if (length == 0) {
+                    printToWebClient("Received telegram with zero length, ignoring.\r\n");
+                    flushToWebClient();
+                    delay(500);
+                    continue;
                   }
+                  if (received_counter != IA1_counter) {
+                    printToWebClient("Didn't receive requested line (wrong counter).\r\n");
+                    flushToWebClient();
+                    delay(500);
+                    continue;
+                  }
+
+                  valid_response = true;
                 }
                 uint8_t id1 = msg[4+bus->offset];
                 uint8_t id2 = msg[7+bus->offset];
@@ -5363,11 +5385,16 @@ void loop() {
                     heating_cmdtbl_size--;
                   }
                 }
-                bin2hex(outBuf + outBufLen, msg, msg[bus->getLen_idx()]+bus->getBusType(), ' ');
-                printToWebClient(outBuf + outBufLen);
+                if (valid_response) {
+                    bin2hex(outBuf + outBufLen, msg, msg[bus->getLen_idx()] + bus->getBusType(), ' ');
+                    printToWebClient(outBuf + outBufLen);
+                } else {
+                    printToWebClient("[Timeout] No valid response after retries.\r\n");
+                }
                 printToWebClient("\r\n");
                 flushToWebClient();
               }
+
               for (int IA2_counter = 1; IA2_counter <= IA2_max && client.connected(); IA2_counter++) {
 #if defined(ESP32)
                 esp_task_wdt_reset();
@@ -5382,9 +5409,19 @@ void loop() {
                     printToWebClient("Didn't receive requested line...\r\n");
                   }
                 }
-                bin2hex(outBuf + outBufLen, msg, msg[bus->getLen_idx()]+bus->getBusType(), ' ');
-                printToWebClient(outBuf + outBufLen);
-                printToWebClient("\r\n");
+
+                int length = msg[bus->getLen_idx()] + bus->getBusType();
+
+                if (length == 0 || length < 10) {
+                  printToWebClient("Invalid telegram received: ");
+                  bin2hex(outBuf + outBufLen, msg, 10, ' ');  // Only first 10 bytes printed
+                  printToWebClient(outBuf + outBufLen);
+                  printToWebClient("\r\n");
+                } else {
+                  bin2hex(outBuf + outBufLen, msg, length, ' ');
+                  printToWebClient(outBuf + outBufLen);
+                  printToWebClient("\r\n");
+                }
                 flushToWebClient();
               }
               outBuf[outBufLen] = 0;
@@ -6526,7 +6563,12 @@ next_parameter:
             }
             p=strchr(p,'=');    // search for '=' sign
             if (p==NULL) {        // no match -> query value
-              pinMode(pin, INPUT);
+              if (dir_token!=NULL) {
+                if (*dir_token=='I') {
+                  pinMode(pin, INPUT);
+                  printFmtToDebug(PSTR("Pin %d set to input.\r\n"), pin);
+                }
+              }
               val=digitalRead(pin);
             } else { // set value
               p++;
