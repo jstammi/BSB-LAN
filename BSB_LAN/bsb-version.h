@@ -2,4 +2,4 @@
 #define MINOR "0"
 #define PATCH "10"
 #define COMPILETIME "20250426162315"
-#define VARIANT "jstammi/20250509"
+#define VARIANT "jstammi/20250509+dev"
